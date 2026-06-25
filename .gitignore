@@ -1,0 +1,44 @@
+# ---- Build output (contains machine-specific absolute paths) ----
+bin/
+obj/
+[Bb]in/
+[Oo]bj/
+publish/
+[Pp]ublish/
+
+# ---- Visual Studio / Rider / VS Code local state ----
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# ---- .NET ----
+project.lock.json
+project.assets.json
+*.nuget.props
+*.nuget.targets
+artifacts/
+[Dd]ebug/
+[Rr]elease/
+[Tt]est[Rr]esult*/
+*.received.*
+
+# ---- Secrets / local config (never commit real values) ----
+# UptimeRobot key lives in dotnet user-secrets, outside the repo.
+.env
+*.env
+!.env.example
+secrets.json
+
+# Generated reports
+reports/
+*.png
+
+# ---- OS noise ----
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
