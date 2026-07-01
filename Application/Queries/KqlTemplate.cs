@@ -67,7 +67,7 @@ internal static class KqlTemplate
     public const string AppServiceRestarts = """
         AppServicePlatformLogs
         | where OperationName in ("Application stopped", "Application started", "RecycleApp", "Application is shutting down")
-        | project TimeGenerated, OperationName, Description = tostring(ResultDescription)
+        | project TimeGenerated, OperationName, Description = tostring(Message)
         | order by TimeGenerated asc
         """;
 

@@ -68,7 +68,7 @@ Each `analyze_incident` / `generate_incident_report` result returns a `redactedI
 
 ## 7. Filesystem isolation
 
-- Exactly one writable directory: `Reports:OutputDirectory` (default `%LOCALAPPDATA%\AzureIncidentInvestigator\reports\`).
+- Exactly one writable directory: `Reports:OutputDirectory` (default `%TEMP%\AzureIncidentInvestigator\reports\`).
 - On save: the path is canonicalized with `Path.GetFullPath` and prefix-checked against the configured root (defends against `../` traversal). Filenames are server-generated — Claude cannot influence them.
 - No tool reads a file from disk and returns its contents.
 

@@ -43,7 +43,8 @@ internal sealed class AppServiceDetectorService : IAppServiceDetectorService
             }
             if (!resp.IsSuccessStatusCode)
             {
-                _log.LogWarning("Detector {Detector} returned {Status}", detectorName, (int)resp.StatusCode);
+                var body = await ReadErrorBodyAsync(resp, ct);
+                _log.LogWarning("Detector {Detector} returned {Status}. Body: {Body}", detectorName, (int)resp.StatusCode, body);
                 return DetectorResult.Unavailable(kind, $"Upstream {(int)resp.StatusCode}");
             }
 
@@ -58,6 +59,19 @@ internal sealed class AppServiceDetectorService : IAppServiceDetectorService
         {
             _log.LogWarning(ex, "Detector {Detector} threw; returning Unavailable", detectorName);
             return DetectorResult.Unavailable(kind, "Upstream error.");
+        }
+    }
+
+    private static async Task<string> ReadErrorBodyAsync(HttpResponseMessage resp, CancellationToken ct)
+    {
+        try
+        {
+            var body = await resp.Content.ReadAsStringAsync(ct);
+            return body.Length > 1000 ? body[..1000] : body;
+        }
+        catch
+        {
+            return "<body unavailable>";
         }
     }
 

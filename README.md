@@ -377,7 +377,7 @@ Then point the Claude config `command` at `publish\AzureIncidentInvestigator.Hos
 | `Databases:CpuWarnThreshold` | int | `75` | CPU % considered warm |
 | `Databases:ConnectionFailWarnPerMinute` | int | `10` | Connection-failure threshold |
 | `Databases:MonitorMappings` | dict | `{}` | UptimeRobot id → list of DB keys |
-| `Reports:OutputDirectory` | string | `%LOCALAPPDATA%\AzureIncidentInvestigator\reports` | Single writable directory |
+| `Reports:OutputDirectory` | string | `%TEMP%\AzureIncidentInvestigator\reports` | Single writable directory (temp by default, so generated reports/charts are easy to clear) |
 | `RateLimits:PerToolPerMinute` | int | `30` | Token-bucket cap per tool |
 
 ### Telemetry column config
