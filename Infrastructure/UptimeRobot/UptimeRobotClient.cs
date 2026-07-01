@@ -22,45 +22,18 @@ internal sealed class UptimeRobotClient : IUptimeRobotClient
         _options = options;
     }
 
-    public async Task<IReadOnlyList<UptimeMonitor>> GetMonitorsAsync(CancellationToken ct)
+    public async Task<IReadOnlyList<MonitorWithLogs>> GetMonitorsWithLogsAsync(DateTimeOffset from, DateTimeOffset to, CancellationToken ct)
     {
-        var result = await _cache.GetOrCreateAsync("ur:monitors", async entry =>
-        {
-            entry.SlidingExpiration = TimeSpan.FromSeconds(_options.CurrentValue.CacheTtlSeconds);
-
-            using var req = new HttpRequestMessage(HttpMethod.Post, "getMonitors")
-            {
-                Content = new FormUrlEncodedContent(Array.Empty<KeyValuePair<string, string>>())
-            };
-
-            using var resp = await _http.SendAsync(req, ct);
-            resp.EnsureSuccessStatusCode();
-            var payload = await resp.Content.ReadFromJsonAsync<GetMonitorsResponse>(cancellationToken: ct)
-                          ?? throw new InvalidOperationException("Empty UptimeRobot response.");
-
-            if (!string.Equals(payload.Stat, "ok", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException($"UptimeRobot error: {payload.Error?.Message ?? "unknown"}");
-            }
-
-            return (payload.Monitors ?? new List<MonitorDto>())
-                .Select(m => new UptimeMonitor(m.Id, m.FriendlyName ?? "", m.Url ?? "", (MonitorStatus)m.Status, m.Interval))
-                .ToList();
-        });
-
-        return result ?? new List<UptimeMonitor>();
-    }
-
-    public async Task<IReadOnlyList<MonitorLog>> GetMonitorLogsAsync(long monitorId, DateTimeOffset from, DateTimeOffset to, CancellationToken ct)
-    {
-        var cacheKey = $"ur:logs:{monitorId}:{from:O}:{to:O}";
+        var cacheKey = $"ur:monitorswithlogs:{from:O}:{to:O}";
         var result = await _cache.GetOrCreateAsync(cacheKey, async entry =>
         {
             entry.SlidingExpiration = TimeSpan.FromSeconds(_options.CurrentValue.CacheTtlSeconds);
 
+            // One request for ALL monitors and their logs. logs=1 makes UptimeRobot embed
+            // each monitor's downtime logs in the same getMonitors response, so we avoid a
+            // per-monitor call storm that trips the API's 429 rate limit.
             var body = new StringBuilder();
-            body.Append("monitors=").Append(monitorId);
-            body.Append("&logs=1&logs_limit=100");
+            body.Append("logs=1&logs_limit=100");
             body.Append("&logs_start_date=").Append(from.ToUnixTimeSeconds());
             body.Append("&logs_end_date=").Append(to.ToUnixTimeSeconds());
 
@@ -79,21 +52,21 @@ internal sealed class UptimeRobotClient : IUptimeRobotClient
                 throw new InvalidOperationException($"UptimeRobot error: {payload.Error?.Message ?? "unknown"}");
             }
 
-            var monitor = payload.Monitors?.FirstOrDefault();
-            if (monitor?.Logs is null)
-            {
-                return new List<MonitorLog>();
-            }
-
-            return monitor.Logs.Select(l => new MonitorLog(
-                monitorId,
-                l.Id,
-                l.Type,
-                DateTimeOffset.FromUnixTimeSeconds(l.Datetime),
-                l.Reason?.Detail,
-                l.Duration)).ToList();
+            return (payload.Monitors ?? new List<MonitorDto>())
+                .Select(m => new MonitorWithLogs(
+                    new UptimeMonitor(m.Id, m.FriendlyName ?? "", m.Url ?? "", (MonitorStatus)m.Status, m.Interval),
+                    (m.Logs ?? new List<LogDto>())
+                        .Select(l => new MonitorLog(
+                            m.Id,
+                            l.Id,
+                            l.Type,
+                            DateTimeOffset.FromUnixTimeSeconds(l.Datetime),
+                            l.Reason?.Detail,
+                            l.Duration))
+                        .ToList()))
+                .ToList();
         });
 
-        return result ?? new List<MonitorLog>();
+        return result ?? new List<MonitorWithLogs>();
     }
 }

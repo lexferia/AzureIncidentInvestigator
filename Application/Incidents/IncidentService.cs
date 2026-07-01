@@ -11,14 +11,13 @@ public sealed class IncidentService : IIncidentService
 
     public async Task<IReadOnlyList<Incident>> GetRecentIncidentsAsync(int days, CancellationToken ct)
     {
-        var monitors = await _ur.GetMonitorsAsync(ct);
         var from = DateTimeOffset.UtcNow.AddDays(-days);
         var to = DateTimeOffset.UtcNow;
+        var monitorsWithLogs = await _ur.GetMonitorsWithLogsAsync(from, to, ct);
         var incidents = new List<Incident>();
 
-        foreach (var monitor in monitors)
+        foreach (var (monitor, logs) in monitorsWithLogs)
         {
-            var logs = await _ur.GetMonitorLogsAsync(monitor.Id, from, to, ct);
             foreach (var log in logs.Where(l => l.Type == 1))
             {
                 var endUtc = log.Duration.HasValue ? log.AtUtc.AddSeconds(log.Duration.Value) : (DateTimeOffset?)null;
@@ -45,15 +44,16 @@ public sealed class IncidentService : IIncidentService
             return null;
         }
 
-        var monitors = await _ur.GetMonitorsAsync(ct);
-        var monitor = monitors.FirstOrDefault(m => m.Id == monitorId);
-        if (monitor is null)
+        var monitorsWithLogs = await _ur.GetMonitorsWithLogsAsync(
+            DateTimeOffset.UtcNow.AddDays(-30), DateTimeOffset.UtcNow.AddMinutes(1), ct);
+        var match = monitorsWithLogs.FirstOrDefault(m => m.Monitor.Id == monitorId);
+        if (match is null)
         {
             return null;
         }
 
-        var logs = await _ur.GetMonitorLogsAsync(monitorId, DateTimeOffset.UtcNow.AddDays(-30), DateTimeOffset.UtcNow.AddMinutes(1), ct);
-        var log = logs.FirstOrDefault(l => l.LogId == logId);
+        var monitor = match.Monitor;
+        var log = match.Logs.FirstOrDefault(l => l.LogId == logId);
         if (log is null)
         {
             return null;

@@ -139,10 +139,10 @@ az login
 # 3. Store the UptimeRobot API key in user-secrets (never committed)
 dotnet user-secrets set "UptimeRobot:ApiKey" "ur-xxxxxxxxxxxxxxxx" --project Host
 
-# 4. Fill in your workspace + allowlists
-notepad Host\appsettings.Development.json
+# 4. Fill in your workspace + allowlists (single config file)
+notepad Host\appsettings.json
 
-# 5. Build
+# 5. Build (copies appsettings.json next to the binaries)
 dotnet build
 
 # 6. (Optional) Smoke test — Ctrl+C to exit. No output on stdout until a client connects.
@@ -174,7 +174,12 @@ dotnet user-secrets set "UptimeRobot:ApiKey" "ur-xxxxxxxxxxxxxxxxx" --project Ho
 
 The key lives at `%APPDATA%\Microsoft\UserSecrets\websitemonitoring-mcpserver-2026\secrets.json` and is **never** committed.
 
-### 4. Fill in `Host/appsettings.Development.json`
+### 4. Fill in `Host/appsettings.json`
+
+This server uses a **single configuration file** — `Host/appsettings.json`. There is no
+`appsettings.Development.json` and no environment switching: the file is loaded by absolute
+path from next to the built binaries, so it is read the same way no matter which working
+directory the MCP client launches the server from. Edit the relevant sections in place:
 
 ```json
 {
@@ -207,6 +212,12 @@ The key lives at `%APPDATA%\Microsoft\UserSecrets\websitemonitoring-mcpserver-20
 
 `Databases:Allowed[].Type` accepts: `SqlDatabase`, `SqlElasticPool`, `CosmosDb`, `PostgresFlexible`, `MySqlFlexible`.
 
+> **Note:** `appsettings.json` is committed to source control, so the workspace GUID and
+> resource IDs you put here are tracked in git. These are identifiers, not credentials — the
+> only real secret (the UptimeRobot API key) stays in user-secrets. After editing the file,
+> **rebuild** (`dotnet build`) so the updated copy lands next to the binaries, then reconnect
+> the server in your client.
+
 ### 5. Build
 
 ```powershell
@@ -231,6 +242,11 @@ Open `%APPDATA%\Claude\claude_desktop_config.json` and add:
 Restart Claude Desktop. The `azure-incident-investigator` connector should appear with eleven tools.
 
 For Claude Code (CLI), register the same `command`/`args` pair via your MCP configuration.
+
+No `env` block or `cwd` is required — the server loads `appsettings.json` from its own binary
+directory and reads the UptimeRobot key from user-secrets, both independent of where the client
+starts the process. If you use the `--no-build` arg above, remember to `dotnet build` yourself
+after changing `appsettings.json` so the fresh copy is deployed next to the binaries.
 
 #### Production-style alternative (single executable)
 
@@ -429,6 +445,8 @@ See [`SECURITY.md`](SECURITY.md) for the full threat model. Highlights:
 **`AuthenticationFailedException` from the Azure SDK.** `DefaultAzureCredential` couldn't get a token. Run `az login` and confirm `az account show` succeeds.
 
 **`InvalidOperationException: UptimeRobot:ApiKey is not configured.`** Run `dotnet user-secrets set "UptimeRobot:ApiKey" "ur-xxxx" --project Host`.
+
+**`InvalidOperationException: AppInsights:WorkspaceId is not configured.`** Set a real Log Analytics workspace GUID in `Host/appsettings.json` and rebuild. If you edited the file but the change didn't take effect, you likely ran with `--no-build` without rebuilding — run `dotnet build` so the updated `appsettings.json` is copied next to the binaries.
 
 **`App Service Plan resource ID is not in the allowlist`.** Add the exact resource ID to `AppServicePlans:AllowedResourceIds`.
 

@@ -11,7 +11,15 @@ using AzureIncidentInvestigator.Infrastructure.DependencyInjection;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-// Secrets (UptimeRobot API key) come from .NET User Secrets in local dev.
+// This server has a single, environment-agnostic config file. Load it by absolute path
+// (next to the binaries) so config resolves no matter which working directory the MCP
+// client launches the process from — clients typically do NOT cd into the Host folder.
+builder.Configuration.AddJsonFile(
+    Path.Combine(AppContext.BaseDirectory, "appsettings.json"),
+    optional: false,
+    reloadOnChange: false);
+
+// The UptimeRobot API key comes from .NET User Secrets — never committed to appsettings.json.
 builder.Configuration.AddUserSecrets<Program>(optional: true);
 
 // Stdio MCP transport: stdout is the JSON-RPC wire, so ALL logs must go to stderr.
