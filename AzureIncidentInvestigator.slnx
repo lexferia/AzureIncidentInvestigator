@@ -1,15 +1,6 @@
 <Solution>
-  <Folder Name="/Application/">
-    <Project Path="Application/AzureIncidentInvestigator.Application.csproj" />
-  </Folder>
-  <Folder Name="/Domain/">
-    <Project Path="Domain/AzureIncidentInvestigator.Domain.csproj" />
-  </Folder>
   <Folder Name="/Host/">
     <Project Path="Host/AzureIncidentInvestigator.Host.csproj" />
-  </Folder>
-  <Folder Name="/Infrastructure/">
-    <Project Path="Infrastructure/AzureIncidentInvestigator.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/Tests/">
     <Project Path="Tests/AzureIncidentInvestigator.Tests.csproj" />

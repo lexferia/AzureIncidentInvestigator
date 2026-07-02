@@ -20,8 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Application\AzureIncidentInvestigator.Application.csproj" />
-    <ProjectReference Include="..\Domain\AzureIncidentInvestigator.Domain.csproj" />
+    <ProjectReference Include="..\Host\AzureIncidentInvestigator.Host.csproj" />
   </ItemGroup>
 
 </Project>
