@@ -9,7 +9,7 @@ The MCP server runs as a child process of Claude Desktop or Claude Code. **Claud
 ## 2. Authentication boundary
 
 ```
-Claude  →  MCP stdio  →  Host  →  Application  →  Infrastructure  →  Azure / UptimeRobot
+Claude  →  MCP stdio  →  Feature tool  →  Integrations client  →  Azure / UptimeRobot
    ▲                                                                        ▲
    │  no credentials cross this line                                        │  credentials resolved here, locally
 ```
@@ -20,7 +20,7 @@ Claude  →  MCP stdio  →  Host  →  Application  →  Infrastructure  →  A
 
 ## 3. Input validation
 
-Centralized in `Application/Validation/ToolInputValidator.cs`. Every tool runs validation **before** any I/O.
+Centralized in `Host/Common/Validation/ToolInputValidator.cs`. Every tool runs validation **before** any I/O.
 
 | Parameter | Rule |
 |---|---|
@@ -81,7 +81,7 @@ Each `analyze_incident` / `generate_incident_report` result returns a `redactedI
 - `AddStandardResilienceHandler` (Polly v8) on the UptimeRobot `HttpClient` — retries, timeout, circuit breaker.
 - Azure Monitor SDK has built-in retries; the App Insights query path adds a per-query timeout (`AppInsights:QueryTimeoutSeconds`).
 - `CancellationToken` from the MCP host is forwarded to every async call.
-- A top-level `try/catch` in `InvestigationTools.RunAsync` translates all exceptions into structured MCP error results — exceptions never escape to the JSON-RPC wire (which would kill the server).
+- A top-level `try/catch` in `ToolExecution.RunAsync` translates all exceptions into structured MCP error results — exceptions never escape to the JSON-RPC wire (which would kill the server).
 
 ## 10. Azure RBAC (least privilege)
 
@@ -108,7 +108,7 @@ These tools are not implemented — by design, not by oversight:
 | `get_config` / `get_env` | Secret exposure |
 | Any Azure ARM mutation method | Server is strictly read-only |
 
-A comment block at the top of `Host/Tools/InvestigationTools.cs` mirrors this list with rationale. Adding anything from it requires a security review and an update to this document.
+A comment block at the top of `Host/Mcp/ToolExecution.cs` mirrors this list with rationale. Adding anything from it requires a security review and an update to this document.
 
 ## 12. Extension safety checklist
 
@@ -118,7 +118,7 @@ When adding a new tool, the engineer **must**:
 2. Add validation to `ToolInputValidator`.
 3. If the tool accepts a resource identifier, add an allowlist in config and a validator check.
 4. Wrap any returned external string in `ITextRedactor.Wrap()`.
-5. Use the `InvestigationTools.RunAsync` wrapper for logging, rate-limiting, and error translation.
+5. Use the `ToolExecution.RunAsync` wrapper for logging, rate-limiting, and error translation.
 6. Add unit tests for the validator and any pure logic.
 7. Update README and SECURITY.md.
 
