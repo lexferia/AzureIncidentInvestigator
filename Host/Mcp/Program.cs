@@ -28,7 +28,7 @@ builder.Services.AddSingleton<MetricChartService>();
 builder.Services
     .AddMcpServer()
     .WithStdioServerTransport()
-    .WithToolsFromAssembly(typeof(InvestigationTools).Assembly);
+    .WithToolsFromAssembly(typeof(ToolExecution).Assembly);
 
 var app = builder.Build();
 
