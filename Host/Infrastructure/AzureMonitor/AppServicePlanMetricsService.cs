@@ -9,7 +9,7 @@ using AzureIncidentInvestigator.Domain.Shared;
 
 namespace AzureIncidentInvestigator.Infrastructure.AzureMonitor;
 
-internal sealed class AppServicePlanMetricsService : IAppServicePlanMetricsService
+public sealed class AppServicePlanMetricsService
 {
     // App Service Plan (Microsoft.Web/serverfarms) standard metrics.
     private static readonly string[] MetricNames =

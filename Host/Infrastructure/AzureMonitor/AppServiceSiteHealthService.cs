@@ -10,7 +10,7 @@ using AzureIncidentInvestigator.Domain.Shared;
 
 namespace AzureIncidentInvestigator.Infrastructure.AzureMonitor;
 
-internal sealed class AppServiceSiteHealthService : IAppServiceSiteHealthService
+public sealed class AppServiceSiteHealthService
 {
     private readonly LogsQueryClient _client;
     private readonly IOptionsMonitor<AppInsightsOptions> _options;

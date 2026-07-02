@@ -11,7 +11,7 @@ using AzureIncidentInvestigator.Infrastructure.AzureMonitor.Dtos;
 
 namespace AzureIncidentInvestigator.Infrastructure.AzureMonitor;
 
-internal sealed class AppServiceDetectorService : IAppServiceDetectorService
+public sealed class AppServiceDetectorService
 {
     private const string ApiVersion = "2022-03-01";
     private const int MaxInsightsPerDetector = 20;

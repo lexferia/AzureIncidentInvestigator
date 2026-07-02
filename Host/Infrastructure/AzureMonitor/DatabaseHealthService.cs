@@ -9,7 +9,7 @@ using AzureIncidentInvestigator.Domain.Shared;
 
 namespace AzureIncidentInvestigator.Infrastructure.AzureMonitor;
 
-internal sealed class DatabaseHealthService : IDatabaseHealthService
+public sealed class DatabaseHealthService
 {
     private readonly MetricsQueryClient _client;
     private readonly IOptionsMonitor<DatabasesOptions> _options;

@@ -38,13 +38,13 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton(sp => new LogsQueryClient(sp.GetRequiredService<TokenCredential>()));
         services.AddSingleton(sp => new MetricsQueryClient(sp.GetRequiredService<TokenCredential>()));
 
-        services.AddSingleton<IAppInsightsQueryService, AppInsightsQueryService>();
-        services.AddSingleton<IAppServicePlanMetricsService, AppServicePlanMetricsService>();
-        services.AddSingleton<IAppServiceSiteHealthService, AppServiceSiteHealthService>();
-        services.AddSingleton<IDatabaseHealthService, DatabaseHealthService>();
+        services.AddSingleton<AppInsightsQueryService>();
+        services.AddSingleton<AppServicePlanMetricsService>();
+        services.AddSingleton<AppServiceSiteHealthService>();
+        services.AddSingleton<DatabaseHealthService>();
 
         services.AddTransient<AzureManagementAuthHandler>();
-        services.AddHttpClient<IAppServiceDetectorService, AppServiceDetectorService>(http =>
+        services.AddHttpClient<AppServiceDetectorService>(http =>
             {
                 http.BaseAddress = new Uri("https://management.azure.com/");
                 http.Timeout = TimeSpan.FromSeconds(30);

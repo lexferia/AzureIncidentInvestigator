@@ -21,8 +21,12 @@ using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using AzureIncidentInvestigator.Application.Abstractions;
 using AzureIncidentInvestigator.Application.Charts;
+using AzureIncidentInvestigator.Application.Crawlers;
 using AzureIncidentInvestigator.Application.Errors;
+using AzureIncidentInvestigator.Application.Incidents;
+using AzureIncidentInvestigator.Application.Reports;
 using AzureIncidentInvestigator.Application.Validation;
+using AzureIncidentInvestigator.Infrastructure.AzureMonitor;
 using AzureIncidentInvestigator.Host.Charts;
 using AzureIncidentInvestigator.Host.RateLimiting;
 
@@ -34,7 +38,7 @@ public static class InvestigationTools
     [McpServerTool(Name = "get_recent_downtime_incidents")]
     [Description("List recent downtime incidents from UptimeRobot (days clamped to 1-30).")]
     public static Task<object> GetRecentIncidents(
-        IIncidentService incidents,
+        IncidentService incidents,
         ToolInputValidator validator,
         ToolRateLimiter limiter,
         ILogger<ToolMarker> log,
@@ -50,7 +54,7 @@ public static class InvestigationTools
     [McpServerTool(Name = "analyze_incident")]
     [Description("Analyze an incident: correlate with exceptions, dependencies, crawlers, App Service Plan/Site health, and Database health.")]
     public static Task<object> AnalyzeIncident(
-        IReportGenerationService reports,
+        ReportGenerationService reports,
         ToolInputValidator validator,
         ToolRateLimiter limiter,
         ILogger<ToolMarker> log,
@@ -79,7 +83,7 @@ public static class InvestigationTools
     [McpServerTool(Name = "detect_bad_crawlers")]
     [Description("Detect suspicious or abusive crawlers within a bounded time window (<= 7 days). Defaults to the last 24h.")]
     public static Task<object> DetectBadCrawlers(
-        ICrawlerDetectionService crawlers,
+        CrawlerDetectionService crawlers,
         ToolInputValidator validator,
         ToolRateLimiter limiter,
         ILogger<ToolMarker> log,
@@ -95,7 +99,7 @@ public static class InvestigationTools
     [McpServerTool(Name = "generate_incident_report")]
     [Description("Generate a markdown investigation report for an incident. Optionally write it to the configured reports directory.")]
     public static Task<object> GenerateIncidentReport(
-        IReportGenerationService reports,
+        ReportGenerationService reports,
         ToolInputValidator validator,
         ToolRateLimiter limiter,
         ILogger<ToolMarker> log,
@@ -118,7 +122,7 @@ public static class InvestigationTools
     [McpServerTool(Name = "get_top_exceptions")]
     [Description("List top exception groups from Application Insights within a bounded time window.")]
     public static Task<object> GetTopExceptions(
-        IAppInsightsQueryService ai,
+        AppInsightsQueryService ai,
         ToolInputValidator validator,
         ToolRateLimiter limiter,
         ILogger<ToolMarker> log,
@@ -137,7 +141,7 @@ public static class InvestigationTools
     [McpServerTool(Name = "get_failed_dependencies")]
     [Description("List failed dependencies (external calls) from Application Insights within a bounded time window.")]
     public static Task<object> GetFailedDependencies(
-        IAppInsightsQueryService ai,
+        AppInsightsQueryService ai,
         ToolInputValidator validator,
         ToolRateLimiter limiter,
         ILogger<ToolMarker> log,
@@ -156,7 +160,7 @@ public static class InvestigationTools
     [McpServerTool(Name = "analyze_app_service_plan_health")]
     [Description("Analyze App Service Plan CPU, memory, and queue lengths for an allowlisted plan resource ID.")]
     public static Task<object> AnalyzePlan(
-        IAppServicePlanMetricsService svc,
+        AppServicePlanMetricsService svc,
         ToolInputValidator validator,
         ToolRateLimiter limiter,
         ILogger<ToolMarker> log,
@@ -174,7 +178,7 @@ public static class InvestigationTools
     [McpServerTool(Name = "analyze_app_service_site_health")]
     [Description("Analyze an App Service Site for restarts and SNAT-suspected outbound failures (heuristic) for an allowlisted site resource ID.")]
     public static Task<object> AnalyzeSite(
-        IAppServiceSiteHealthService svc,
+        AppServiceSiteHealthService svc,
         ToolInputValidator validator,
         ToolRateLimiter limiter,
         ILogger<ToolMarker> log,
@@ -192,7 +196,7 @@ public static class InvestigationTools
     [McpServerTool(Name = "analyze_app_service_diagnostics")]
     [Description("Query Azure App Service Diagnostics detectors (SnatPortExhaustion, WebAppRestarted, HighCpu, etc.) for an allowlisted site. More authoritative than App-Insights heuristics.")]
     public static Task<object> AnalyzeAppServiceDiagnostics(
-        IAppServiceDetectorService svc,
+        AppServiceDetectorService svc,
         ToolInputValidator validator,
         ToolRateLimiter limiter,
         ILogger<ToolMarker> log,
@@ -215,7 +219,7 @@ public static class InvestigationTools
     [McpServerTool(Name = "analyze_database_health")]
     [Description("Analyze database health (CPU/DTU/memory/connections) for a database key configured in Databases:Allowed.")]
     public static Task<object> AnalyzeDatabase(
-        IDatabaseHealthService svc,
+        DatabaseHealthService svc,
         ToolInputValidator validator,
         ToolRateLimiter limiter,
         ILogger<ToolMarker> log,

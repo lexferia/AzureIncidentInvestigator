@@ -13,7 +13,7 @@ using AzureIncidentInvestigator.Domain.Telemetry;
 
 namespace AzureIncidentInvestigator.Infrastructure.AzureMonitor;
 
-internal sealed class AppInsightsQueryService : IAppInsightsQueryService
+public sealed class AppInsightsQueryService
 {
     private readonly LogsQueryClient _client;
     private readonly IOptionsMonitor<AppInsightsOptions> _options;

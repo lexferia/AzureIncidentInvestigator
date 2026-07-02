@@ -1,8 +1,10 @@
 using System.Text;
 using Microsoft.Extensions.Options;
 using AzureIncidentInvestigator.Application.Abstractions;
+using AzureIncidentInvestigator.Application.Crawlers;
 using AzureIncidentInvestigator.Application.Incidents;
 using AzureIncidentInvestigator.Application.Options;
+using AzureIncidentInvestigator.Infrastructure.AzureMonitor;
 using AzureIncidentInvestigator.Domain.Crawlers;
 using AzureIncidentInvestigator.Domain.Diagnostics;
 using AzureIncidentInvestigator.Domain.Metrics;
@@ -10,7 +12,7 @@ using AzureIncidentInvestigator.Domain.Shared;
 
 namespace AzureIncidentInvestigator.Application.Reports;
 
-public sealed class ReportGenerationService : IReportGenerationService
+public sealed class ReportGenerationService
 {
     // Detectors auto-queried when a site mapping exists. Authoritative beats heuristic.
     private static readonly DetectorKind[] DefaultIncidentDetectors =
@@ -22,13 +24,13 @@ public sealed class ReportGenerationService : IReportGenerationService
         DetectorKind.ApplicationCrashes
     };
 
-    private readonly IIncidentService _incidents;
-    private readonly IAppInsightsQueryService _ai;
-    private readonly ICrawlerDetectionService _crawlers;
-    private readonly IAppServicePlanMetricsService _planMetrics;
-    private readonly IAppServiceSiteHealthService _siteHealth;
-    private readonly IDatabaseHealthService _dbHealth;
-    private readonly IAppServiceDetectorService _detectors;
+    private readonly IncidentService _incidents;
+    private readonly AppInsightsQueryService _ai;
+    private readonly CrawlerDetectionService _crawlers;
+    private readonly AppServicePlanMetricsService _planMetrics;
+    private readonly AppServiceSiteHealthService _siteHealth;
+    private readonly DatabaseHealthService _dbHealth;
+    private readonly AppServiceDetectorService _detectors;
     private readonly ITextRedactor _redactor;
     private readonly IOptionsMonitor<AppServicePlansOptions> _planOpts;
     private readonly IOptionsMonitor<AppServiceSitesOptions> _siteOpts;
@@ -36,13 +38,13 @@ public sealed class ReportGenerationService : IReportGenerationService
     private readonly IOptionsMonitor<ReportsOptions> _reportOpts;
 
     public ReportGenerationService(
-        IIncidentService incidents,
-        IAppInsightsQueryService ai,
-        ICrawlerDetectionService crawlers,
-        IAppServicePlanMetricsService planMetrics,
-        IAppServiceSiteHealthService siteHealth,
-        IDatabaseHealthService dbHealth,
-        IAppServiceDetectorService detectors,
+        IncidentService incidents,
+        AppInsightsQueryService ai,
+        CrawlerDetectionService crawlers,
+        AppServicePlanMetricsService planMetrics,
+        AppServiceSiteHealthService siteHealth,
+        DatabaseHealthService dbHealth,
+        AppServiceDetectorService detectors,
         ITextRedactor redactor,
         IOptionsMonitor<AppServicePlansOptions> planOpts,
         IOptionsMonitor<AppServiceSitesOptions> siteOpts,

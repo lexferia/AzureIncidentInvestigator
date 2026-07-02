@@ -3,7 +3,7 @@ using AzureIncidentInvestigator.Domain.Incidents;
 
 namespace AzureIncidentInvestigator.Application.Incidents;
 
-public sealed class IncidentService : IIncidentService
+public sealed class IncidentService
 {
     private readonly IUptimeRobotClient _ur;
 

@@ -15,9 +15,9 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<ITextRedactor, TextRedactor>();
         services.AddSingleton<CrawlerClassifier>();
         services.AddSingleton<ToolInputValidator>();
-        services.AddSingleton<IIncidentService, IncidentService>();
-        services.AddSingleton<ICrawlerDetectionService, CrawlerDetectionService>();
-        services.AddSingleton<IReportGenerationService, ReportGenerationService>();
+        services.AddSingleton<IncidentService>();
+        services.AddSingleton<CrawlerDetectionService>();
+        services.AddSingleton<ReportGenerationService>();
         return services;
     }
 }

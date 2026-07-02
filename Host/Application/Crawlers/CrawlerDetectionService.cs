@@ -1,10 +1,11 @@
 using AzureIncidentInvestigator.Application.Abstractions;
 using AzureIncidentInvestigator.Domain.Crawlers;
 using AzureIncidentInvestigator.Domain.Shared;
+using AzureIncidentInvestigator.Infrastructure.AzureMonitor;
 
 namespace AzureIncidentInvestigator.Application.Crawlers;
 
-public sealed class CrawlerDetectionService : ICrawlerDetectionService
+public sealed class CrawlerDetectionService
 {
     // Default burst threshold per 10-minute bin. >150 in any single bin from the same
     // (IP, UA) tuple is treated as a candidate worth classifying.
@@ -14,10 +15,10 @@ public sealed class CrawlerDetectionService : ICrawlerDetectionService
     // for the classifier's high-rate signal.
     private const double BinsPerHour = 6.0;
 
-    private readonly IAppInsightsQueryService _ai;
+    private readonly AppInsightsQueryService _ai;
     private readonly CrawlerClassifier _classifier;
 
-    public CrawlerDetectionService(IAppInsightsQueryService ai, CrawlerClassifier classifier)
+    public CrawlerDetectionService(AppInsightsQueryService ai, CrawlerClassifier classifier)
     {
         _ai = ai;
         _classifier = classifier;

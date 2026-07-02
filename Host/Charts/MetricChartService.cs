@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using AzureIncidentInvestigator.Application.Abstractions;
 using AzureIncidentInvestigator.Application.Charts;
+using AzureIncidentInvestigator.Infrastructure.AzureMonitor;
 using AzureIncidentInvestigator.Application.Options;
 using AzureIncidentInvestigator.Domain.Charts;
 using AzureIncidentInvestigator.Domain.Metrics;
@@ -17,16 +18,16 @@ public sealed class MetricChartService
 {
     private const int MaxPointsPerSeries = 1000;
 
-    private readonly IAppServicePlanMetricsService _plans;
-    private readonly IDatabaseHealthService _dbs;
-    private readonly IAppInsightsQueryService _ai;
+    private readonly AppServicePlanMetricsService _plans;
+    private readonly DatabaseHealthService _dbs;
+    private readonly AppInsightsQueryService _ai;
     private readonly IOptionsMonitor<ReportsOptions> _reportOpts;
     private readonly ITextRedactor _redactor;
 
     public MetricChartService(
-        IAppServicePlanMetricsService plans,
-        IDatabaseHealthService dbs,
-        IAppInsightsQueryService ai,
+        AppServicePlanMetricsService plans,
+        DatabaseHealthService dbs,
+        AppInsightsQueryService ai,
         IOptionsMonitor<ReportsOptions> reportOpts,
         ITextRedactor redactor)
     {
