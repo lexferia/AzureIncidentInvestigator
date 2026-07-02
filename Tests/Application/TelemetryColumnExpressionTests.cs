@@ -22,14 +22,14 @@ public class TelemetryColumnExpressionTests
     public void Compile_SingleCustomDimension_ProducesTostringExpression()
     {
         TelemetryColumnExpression.Compile(new[] { "customDimensions:Client IP Address" })
-            .Should().Be("tostring(customDimensions[\"Client IP Address\"])");
+            .Should().Be("tostring(Properties[\"Client IP Address\"])");
     }
 
     [Fact]
     public void Compile_SingleBuiltIn_ProducesTostringExpression()
     {
-        TelemetryColumnExpression.Compile(new[] { "builtIn:client_IP" })
-            .Should().Be("tostring(client_IP)");
+        TelemetryColumnExpression.Compile(new[] { "builtIn:ClientIP" })
+            .Should().Be("tostring(ClientIP)");
     }
 
     [Fact]
@@ -38,18 +38,18 @@ public class TelemetryColumnExpressionTests
         var result = TelemetryColumnExpression.Compile(new[]
         {
             "customDimensions:Client IP Address",
-            "builtIn:client_IP"
+            "builtIn:ClientIP"
         });
-        result.Should().Be("coalesce(tostring(customDimensions[\"Client IP Address\"]), tostring(client_IP), \"\")");
+        result.Should().Be("coalesce(tostring(Properties[\"Client IP Address\"]), tostring(ClientIP), \"\")");
     }
 
     [Fact]
     public void Compile_SourceCaseInsensitive()
     {
         TelemetryColumnExpression.Compile(new[] { "CUSTOMDIMENSIONS:User-Agent" })
-            .Should().Be("tostring(customDimensions[\"User-Agent\"])");
-        TelemetryColumnExpression.Compile(new[] { "BUILTIN:client_IP" })
-            .Should().Be("tostring(client_IP)");
+            .Should().Be("tostring(Properties[\"User-Agent\"])");
+        TelemetryColumnExpression.Compile(new[] { "BUILTIN:ClientIP" })
+            .Should().Be("tostring(ClientIP)");
     }
 
     [Theory]

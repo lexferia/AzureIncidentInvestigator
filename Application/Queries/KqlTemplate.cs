@@ -7,51 +7,56 @@ namespace AzureIncidentInvestigator.Application.Queries;
 /// The only template parameter is `top`, which is always an int clamped to [1, 100]
 /// by ToolInputValidator. Integer substitution into KQL is safe because the type is
 /// constrained — strings are never substituted via these helpers.
+///
+/// These target the WORKSPACE-BASED Application Insights schema (AppRequests /
+/// AppDependencies / AppExceptions, with TimeGenerated/DurationMs/PascalCase columns),
+/// because the server queries a Log Analytics workspace via QueryWorkspaceAsync. The
+/// legacy classic table names (requests/dependencies/exceptions) do NOT resolve there.
 /// </summary>
 internal static class KqlTemplate
 {
     private const string TopExceptionsRaw = """
-        exceptions
+        AppExceptions
         | summarize Count = count(),
-                    FirstSeen = min(timestamp),
-                    LastSeen = max(timestamp),
-                    Operations = make_set(operation_Name, 10)
-                    by Type = type, Message = tostring(outerMessage)
+                    FirstSeen = min(TimeGenerated),
+                    LastSeen = max(TimeGenerated),
+                    Operations = make_set(OperationName, 10)
+                    by Type = ExceptionType, Message = tostring(OuterMessage)
         | top {TOP} by Count desc
         """;
 
     private const string FailedRequestsRaw = """
-        requests
-        | where success == false
+        AppRequests
+        | where Success == false
         | summarize Count = count(),
-                    ResultCodes = make_set(tostring(resultCode), 10),
-                    AvgDuration = avg(duration)
-                    by Name = name
+                    ResultCodes = make_set(tostring(ResultCode), 10),
+                    AvgDuration = avg(DurationMs)
+                    by Name = Name
         | top {TOP} by Count desc
         """;
 
     private const string FailedDependenciesRaw = """
-        dependencies
-        | where success == false
+        AppDependencies
+        | where Success == false
         | summarize Count = count(),
-                    AvgDuration = avg(duration),
-                    ResultCodes = make_set(tostring(resultCode), 10)
-                    by Target = target, Type = type
+                    AvgDuration = avg(DurationMs),
+                    ResultCodes = make_set(tostring(ResultCode), 10)
+                    by Target = Target, Type = DependencyType
         | top {TOP} by Count desc
         """;
 
     private const string TopUserAgentsRaw = """
-        requests
+        AppRequests
         | extend ua = {USER_AGENT_EXPR}
         | where isnotempty(ua)
         | summarize Total = count(),
-                    NotFound = countif(tostring(resultCode) == "404")
+                    NotFound = countif(tostring(ResultCode) == "404")
                     by UserAgent = ua
         | top {TOP} by Total desc
         """;
 
     private const string TopClientIpsRaw = """
-        requests
+        AppRequests
         | extend ip = {CLIENT_IP_EXPR}
         | where isnotempty(ip)
         | extend bucket = strcat(split(ip,".")[0],".",split(ip,".")[1],".",split(ip,".")[2],".0/24")
@@ -60,8 +65,8 @@ internal static class KqlTemplate
         """;
 
     public const string StatusCodeBreakdown = """
-        requests
-        | summarize Count = count() by StatusCode = tostring(resultCode)
+        AppRequests
+        | summarize Count = count() by StatusCode = tostring(ResultCode)
         """;
 
     public const string AppServiceRestarts = """
@@ -72,53 +77,53 @@ internal static class KqlTemplate
         """;
 
     public const string SnatSuspectFailures = """
-        dependencies
-        | where success == false
-        | where type in ("Http", "HTTP", "Https")
-        | where (resultCode in ("0","-1","408","504")) or duration > 30000
-        | summarize Failures = count() by bin(timestamp, 1m), Target = target
+        AppDependencies
+        | where Success == false
+        | where DependencyType in ("Http", "HTTP", "Https")
+        | where (ResultCode in ("0","-1","408","504")) or DurationMs > 30000
+        | summarize Failures = count() by bin(TimeGenerated, 1m), Target = Target
         | where Failures > 5
-        | order by timestamp asc
+        | order by TimeGenerated asc
         """;
 
     private const string BurstyCrawlerActivityRaw = """
-        requests
+        AppRequests
         | extend ClientIp = {CLIENT_IP_EXPR}
         | extend UserAgent = {USER_AGENT_EXPR}
         | extend Country = {COUNTRY_EXPR}
         | summarize RequestCount = count()
-            by bin(timestamp, 10m), ClientIp, Country, UserAgent
+            by bin(TimeGenerated, 10m), ClientIp, Country, UserAgent
         | where RequestCount > {MIN}
-        | order by timestamp desc
+        | order by TimeGenerated desc
         """;
 
     // Per-minute time-series for charting. Parameter is bin grain in minutes (1, 5, 15, 60).
     private const string RequestsPerBinRaw = """
-        requests
-        | summarize Value = count() by bin(timestamp, {GRAIN}m)
-        | order by timestamp asc
+        AppRequests
+        | summarize Value = count() by bin(TimeGenerated, {GRAIN}m)
+        | order by TimeGenerated asc
         """;
 
     private const string FailedRequestsPerBinRaw = """
-        requests
-        | where success == false
-        | summarize Value = count() by bin(timestamp, {GRAIN}m)
-        | order by timestamp asc
+        AppRequests
+        | where Success == false
+        | summarize Value = count() by bin(TimeGenerated, {GRAIN}m)
+        | order by TimeGenerated asc
         """;
 
     private const string ExceptionsPerBinRaw = """
-        exceptions
-        | summarize Value = count() by bin(timestamp, {GRAIN}m)
-        | order by timestamp asc
+        AppExceptions
+        | summarize Value = count() by bin(TimeGenerated, {GRAIN}m)
+        | order by TimeGenerated asc
         """;
 
     private const string SnatSuspectFailuresPerBinRaw = """
-        dependencies
-        | where success == false
-        | where type in ("Http", "HTTP", "Https")
-        | where (resultCode in ("0","-1","408","504")) or duration > 30000
-        | summarize Value = count() by bin(timestamp, {GRAIN}m)
-        | order by timestamp asc
+        AppDependencies
+        | where Success == false
+        | where DependencyType in ("Http", "HTTP", "Https")
+        | where (ResultCode in ("0","-1","408","504")) or DurationMs > 30000
+        | summarize Value = count() by bin(TimeGenerated, {GRAIN}m)
+        | order by TimeGenerated asc
         """;
 
     public static string TopExceptions(int top) => BindTop(TopExceptionsRaw, top);

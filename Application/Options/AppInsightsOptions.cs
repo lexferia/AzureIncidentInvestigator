@@ -21,7 +21,7 @@ public sealed class TelemetryColumnOptions
     public List<string> ClientIp { get; set; } = new()
     {
         "customDimensions:Client IP Address",
-        "builtIn:client_IP"
+        "builtIn:ClientIP"
     };
 
     public List<string> UserAgent { get; set; } = new()
@@ -31,6 +31,6 @@ public sealed class TelemetryColumnOptions
 
     public List<string> Country { get; set; } = new()
     {
-        "builtIn:client_CountryOrRegion"
+        "builtIn:ClientCountryOrRegion"
     };
 }

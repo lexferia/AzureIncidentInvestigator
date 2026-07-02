@@ -30,7 +30,7 @@ internal sealed class AppServicePlanMetricsService : IAppServicePlanMetricsServi
     {
         var grain = MetricsHelpers.PickGrain(window);
 
-        Response<MetricsQueryResult> response = await _client.QueryResourceAsync(
+        Response<MetricsQueryResult> response = await AzureAuthGuard.GuardAsync(() => _client.QueryResourceAsync(
             allowedResourceId,
             MetricNames,
             new MetricsQueryOptions
@@ -39,7 +39,7 @@ internal sealed class AppServicePlanMetricsService : IAppServicePlanMetricsServi
                 Granularity = grain,
                 Aggregations = { MetricAggregationType.Average, MetricAggregationType.Maximum }
             },
-            cancellationToken: ct);
+            cancellationToken: ct));
 
         MetricSeries Series(string name, MetricAggregationType agg)
         {
@@ -81,7 +81,7 @@ internal sealed class AppServicePlanMetricsService : IAppServicePlanMetricsServi
         var azureAgg = ToAzureAggregation(aggregation);
         var grain = MetricsHelpers.PickGrain(window);
 
-        Response<MetricsQueryResult> response = await _client.QueryResourceAsync(
+        Response<MetricsQueryResult> response = await AzureAuthGuard.GuardAsync(() => _client.QueryResourceAsync(
             allowedResourceId,
             new[] { azureName },
             new MetricsQueryOptions
@@ -90,7 +90,7 @@ internal sealed class AppServicePlanMetricsService : IAppServicePlanMetricsServi
                 Granularity = grain,
                 Aggregations = { azureAgg }
             },
-            cancellationToken: ct);
+            cancellationToken: ct));
 
         var metric = response.Value.Metrics.FirstOrDefault(m => m.Name.Equals(azureName, StringComparison.OrdinalIgnoreCase));
         return metric is null

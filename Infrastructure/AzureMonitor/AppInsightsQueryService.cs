@@ -3,6 +3,7 @@ using Azure.Monitor.Query;
 using Azure.Monitor.Query.Models;
 using Microsoft.Extensions.Options;
 using AzureIncidentInvestigator.Application.Abstractions;
+using AzureIncidentInvestigator.Application.Errors;
 using AzureIncidentInvestigator.Application.Options;
 using AzureIncidentInvestigator.Application.Queries;
 using AzureIncidentInvestigator.Domain.Crawlers;
@@ -32,17 +33,19 @@ internal sealed class AppInsightsQueryService : IAppInsightsQueryService
         var workspaceId = _options.CurrentValue.WorkspaceId;
         if (string.IsNullOrWhiteSpace(workspaceId))
         {
-            throw new InvalidOperationException("AppInsights:WorkspaceId is not configured.");
+            throw new ConfigurationException(
+                "AppInsights:WorkspaceId",
+                "AppInsights:WorkspaceId is not configured. Set the Log Analytics workspace GUID in appsettings.json.");
         }
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(TimeSpan.FromSeconds(_options.CurrentValue.QueryTimeoutSeconds));
 
-        Response<LogsQueryResult> response = await _client.QueryWorkspaceAsync(
+        Response<LogsQueryResult> response = await AzureAuthGuard.GuardAsync(() => _client.QueryWorkspaceAsync(
             workspaceId,
             kql,
             Range(window),
-            cancellationToken: cts.Token);
+            cancellationToken: cts.Token));
 
         return response.Value.Table;
     }
@@ -119,7 +122,7 @@ internal sealed class AppInsightsQueryService : IAppInsightsQueryService
         var result = new List<BurstyCrawlerEvent>(table.Rows.Count);
         foreach (var row in table.Rows)
         {
-            // Columns from KQL: bin(timestamp,10m), ClientIp, client_CountryOrRegion, UserAgent, RequestCount
+            // Columns from KQL: bin(TimeGenerated,10m), ClientIp, Country, UserAgent, RequestCount
             result.Add(new BurstyCrawlerEvent(
                 AsDateTimeOffset(row[0]),
                 _redactor.Wrap(row[1]?.ToString() ?? ""),

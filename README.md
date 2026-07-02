@@ -364,9 +364,9 @@ Then point the Claude config `command` at `publish\AzureIncidentInvestigator.Hos
 | `AppInsights:WorkspaceId` | GUID | _empty_ | Log Analytics workspace GUID |
 | `AppInsights:MaxQueryWindowDays` | int | `7` | Hard cap on time-window inputs |
 | `AppInsights:QueryTimeoutSeconds` | int | `20` | Per-query timeout |
-| `AppInsights:TelemetryColumns:ClientIp` | string[] | `["customDimensions:Client IP Address", "builtIn:client_IP"]` | Where this workspace stores the client IP. Fallback chain. See "Telemetry column config" below. |
+| `AppInsights:TelemetryColumns:ClientIp` | string[] | `["customDimensions:Client IP Address", "builtIn:ClientIP"]` | Where this workspace stores the client IP. Fallback chain. See "Telemetry column config" below. |
 | `AppInsights:TelemetryColumns:UserAgent` | string[] | `["customDimensions:User-Agent"]` | Where this workspace stores the user-agent. |
-| `AppInsights:TelemetryColumns:Country` | string[] | `["builtIn:client_CountryOrRegion"]` | Where this workspace stores the country. |
+| `AppInsights:TelemetryColumns:Country` | string[] | `["builtIn:ClientCountryOrRegion"]` | Where this workspace stores the country. |
 | `AppServicePlans:AllowedResourceIds` | string[] | `[]` | Allowlist for the plan tool |
 | `AppServicePlans:MonitorMappings` | dict | `{}` | UptimeRobot id → plan resource id |
 | `AppServicePlans:CpuWarnThreshold` | int | `80` | CPU % considered warm |
@@ -382,21 +382,21 @@ Then point the Claude config `command` at `publish\AzureIncidentInvestigator.Hos
 
 ### Telemetry column config
 
-Different App Insights workspaces store client IP / user-agent / country in different places — some use the built-in columns (`client_IP`, `client_CountryOrRegion`), some keep them in `customDimensions` because the SDK isn't configured to populate the built-ins (common in custom middleware setups), some have both.
+The server queries the **workspace-based** Application Insights schema (`AppRequests` / `AppDependencies` / `AppExceptions`). Different workspaces store client IP / user-agent / country in different places — some use the built-in columns (`ClientIP`, `ClientCountryOrRegion`), some keep them in custom dimensions because the SDK isn't configured to populate the built-ins (common in custom middleware setups), some have both.
 
-Each `TelemetryColumns:*` setting is an **ordered fallback list**. Each entry is `<source>:<key>` where `<source>` is either `customDimensions` or `builtIn`. The server compiles the list into a safe KQL `coalesce(tostring(...), tostring(...), "")` expression at query time.
+Each `TelemetryColumns:*` setting is an **ordered fallback list**. Each entry is `<source>:<key>` where `<source>` is either `customDimensions` or `builtIn`. The `customDimensions` source maps to the workspace `Properties` dynamic column (classic AI called that bag "customDimensions"); `builtIn` keys must be workspace column names (e.g. `ClientIP`, not the classic `client_IP`). The server compiles the list into a safe KQL `coalesce(tostring(...), tostring(...), "")` expression at query time.
 
 ```jsonc
 "AppInsights": {
   "TelemetryColumns": {
-    // Try customDimensions["Client IP Address"] first; fall back to built-in client_IP.
-    "ClientIp":  [ "customDimensions:Client IP Address", "builtIn:client_IP" ],
+    // Try Properties["Client IP Address"] first; fall back to built-in ClientIP.
+    "ClientIp":  [ "customDimensions:Client IP Address", "builtIn:ClientIP" ],
 
-    // Some workspaces use a different cd key (e.g. "Http_User_Agent" from middleware).
+    // Some workspaces use a different property key (e.g. "Http_User_Agent" from middleware).
     "UserAgent": [ "customDimensions:User-Agent", "customDimensions:Http_User_Agent" ],
 
     // Country is almost always the built-in.
-    "Country":   [ "builtIn:client_CountryOrRegion" ]
+    "Country":   [ "builtIn:ClientCountryOrRegion" ]
   }
 }
 ```

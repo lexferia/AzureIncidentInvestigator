@@ -21,6 +21,7 @@ using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using AzureIncidentInvestigator.Application.Abstractions;
 using AzureIncidentInvestigator.Application.Charts;
+using AzureIncidentInvestigator.Application.Errors;
 using AzureIncidentInvestigator.Application.Validation;
 using AzureIncidentInvestigator.Host.Charts;
 using AzureIncidentInvestigator.Host.RateLimiting;
@@ -304,6 +305,18 @@ public static class InvestigationTools
                 toolName, correlationId, sw.ElapsedMilliseconds, vex.ParameterName);
             return new { error = "validation", parameter = vex.ParameterName, message = vex.Message };
         }
+        catch (ConfigurationException cex)
+        {
+            log.LogWarning("tool.invoked {Tool} {CorrelationId} duration={Duration}ms outcome=configuration setting={Setting}",
+                toolName, correlationId, sw.ElapsedMilliseconds, cex.Setting);
+            return new { error = "configuration", setting = cex.Setting, message = cex.Message, retryable = false };
+        }
+        catch (AuthenticationException aex)
+        {
+            log.LogWarning(aex, "tool.invoked {Tool} {CorrelationId} duration={Duration}ms outcome=authentication",
+                toolName, correlationId, sw.ElapsedMilliseconds);
+            return new { error = "authentication", message = aex.Message, retryable = false };
+        }
         catch (OperationCanceledException)
         {
             log.LogInformation("tool.invoked {Tool} {CorrelationId} duration={Duration}ms outcome=cancelled",
@@ -345,6 +358,20 @@ public static class InvestigationTools
             log.LogWarning("tool.invoked {Tool} {CorrelationId} duration={Duration}ms outcome=validation param={Param}",
                 toolName, correlationId, sw.ElapsedMilliseconds, vex.ParameterName);
             var payload = JsonSerializer.Serialize(new { error = "validation", parameter = vex.ParameterName, message = vex.Message });
+            return ErrorResult(payload);
+        }
+        catch (ConfigurationException cex)
+        {
+            log.LogWarning("tool.invoked {Tool} {CorrelationId} duration={Duration}ms outcome=configuration setting={Setting}",
+                toolName, correlationId, sw.ElapsedMilliseconds, cex.Setting);
+            var payload = JsonSerializer.Serialize(new { error = "configuration", setting = cex.Setting, message = cex.Message, retryable = false });
+            return ErrorResult(payload);
+        }
+        catch (AuthenticationException aex)
+        {
+            log.LogWarning(aex, "tool.invoked {Tool} {CorrelationId} duration={Duration}ms outcome=authentication",
+                toolName, correlationId, sw.ElapsedMilliseconds);
+            var payload = JsonSerializer.Serialize(new { error = "authentication", message = aex.Message, retryable = false });
             return ErrorResult(payload);
         }
         catch (OperationCanceledException)

@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.Extensions.Options;
+using AzureIncidentInvestigator.Application.Errors;
 using AzureIncidentInvestigator.Application.Options;
 
 namespace AzureIncidentInvestigator.Infrastructure.UptimeRobot;
@@ -15,7 +16,8 @@ internal sealed class UptimeRobotAuthHandler : DelegatingHandler
         var apiKey = _options.CurrentValue.ApiKey;
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            throw new InvalidOperationException(
+            throw new ConfigurationException(
+                "UptimeRobot:ApiKey",
                 "UptimeRobot:ApiKey is not configured. Run: dotnet user-secrets set \"UptimeRobot:ApiKey\" \"...\" --project Host");
         }
 

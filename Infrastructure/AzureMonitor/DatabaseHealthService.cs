@@ -35,7 +35,7 @@ internal sealed class DatabaseHealthService : IDatabaseHealthService
         var metricNames = MetricsFor(allowed.Type);
         var grain = MetricsHelpers.PickGrain(window);
 
-        Response<MetricsQueryResult> response = await _client.QueryResourceAsync(
+        Response<MetricsQueryResult> response = await AzureAuthGuard.GuardAsync(() => _client.QueryResourceAsync(
             allowed.ResourceId,
             metricNames,
             new MetricsQueryOptions
@@ -44,7 +44,7 @@ internal sealed class DatabaseHealthService : IDatabaseHealthService
                 Granularity = grain,
                 Aggregations = { MetricAggregationType.Average, MetricAggregationType.Maximum }
             },
-            cancellationToken: ct);
+            cancellationToken: ct));
 
         MetricSummary? Summarize(string name, double threshold)
         {
@@ -88,7 +88,7 @@ internal sealed class DatabaseHealthService : IDatabaseHealthService
         var azureAgg = ToAzureAggregation(aggregation);
         var grain = MetricsHelpers.PickGrain(window);
 
-        Response<MetricsQueryResult> response = await _client.QueryResourceAsync(
+        Response<MetricsQueryResult> response = await AzureAuthGuard.GuardAsync(() => _client.QueryResourceAsync(
             allowed.ResourceId,
             new[] { azureName },
             new MetricsQueryOptions
@@ -97,7 +97,7 @@ internal sealed class DatabaseHealthService : IDatabaseHealthService
                 Granularity = grain,
                 Aggregations = { azureAgg }
             },
-            cancellationToken: ct);
+            cancellationToken: ct));
 
         var metric = response.Value.Metrics.FirstOrDefault(m => m.Name.Equals(azureName, StringComparison.OrdinalIgnoreCase));
         return metric is null

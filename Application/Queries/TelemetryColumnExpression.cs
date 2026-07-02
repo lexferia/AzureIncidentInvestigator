@@ -10,11 +10,16 @@ namespace AzureIncidentInvestigator.Application.Queries;
 /// chain. Keys are regex-validated so the generated KQL is well-formed and
 /// cannot break out of the string literal context inside the template.
 ///
+/// The "customDimensions" source maps to the workspace-based Application Insights
+/// dynamic column "Properties" (classic AI called this bag "customDimensions"); the
+/// keyword is kept for familiarity. "builtIn" keys must be workspace column names
+/// (e.g. ClientIP, ClientCountryOrRegion), not the classic client_IP names.
+///
 /// Examples (valid):
-///   "customDimensions:Client IP Address"         -> tostring(customDimensions["Client IP Address"])
-///   "builtIn:client_IP"                          -> tostring(client_IP)
-///   ["customDimensions:User-Agent","builtIn:client_Browser"]
-///        -> coalesce(tostring(customDimensions["User-Agent"]), tostring(client_Browser), "")
+///   "customDimensions:Client IP Address"         -> tostring(Properties["Client IP Address"])
+///   "builtIn:ClientIP"                           -> tostring(ClientIP)
+///   ["customDimensions:User-Agent","builtIn:ClientBrowser"]
+///        -> coalesce(tostring(Properties["User-Agent"]), tostring(ClientBrowser), "")
 /// </summary>
 internal static partial class TelemetryColumnExpression
 {
@@ -63,7 +68,7 @@ internal static partial class TelemetryColumnExpression
                     throw new InvalidOperationException(
                         $"Invalid customDimensions key '{key}'. Allowed: A-Z, a-z, 0-9, space, '_', '-', '.', 1-128 chars.");
                 }
-                parts.Add($"tostring(customDimensions[\"{key}\"])");
+                parts.Add($"tostring(Properties[\"{key}\"])");
             }
             else if (string.Equals(source, "builtIn", StringComparison.OrdinalIgnoreCase))
             {

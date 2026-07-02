@@ -39,11 +39,11 @@ internal sealed class AppServiceSiteHealthService : IAppServiceSiteHealthService
             return Array.Empty<RestartEvent>();
         }
 
-        Response<LogsQueryResult> response = await _client.QueryWorkspaceAsync(
+        Response<LogsQueryResult> response = await AzureAuthGuard.GuardAsync(() => _client.QueryWorkspaceAsync(
             workspaceId,
             KqlTemplate.AppServiceRestarts,
             new QueryTimeRange(window.StartUtc, window.EndUtc),
-            cancellationToken: ct);
+            cancellationToken: ct));
 
         var table = response.Value.Table;
         return table.Rows.Select(row => new RestartEvent(
@@ -60,11 +60,11 @@ internal sealed class AppServiceSiteHealthService : IAppServiceSiteHealthService
             return new SnatExhaustionFinding(false, 0, Array.Empty<SnatTargetFailure>(), null);
         }
 
-        Response<LogsQueryResult> response = await _client.QueryWorkspaceAsync(
+        Response<LogsQueryResult> response = await AzureAuthGuard.GuardAsync(() => _client.QueryWorkspaceAsync(
             workspaceId,
             KqlTemplate.SnatSuspectFailures,
             new QueryTimeRange(window.StartUtc, window.EndUtc),
-            cancellationToken: ct);
+            cancellationToken: ct));
 
         var rows = response.Value.Table.Rows;
         if (rows.Count == 0)

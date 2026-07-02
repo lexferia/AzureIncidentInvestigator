@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using Microsoft.Extensions.Logging;
 using AzureIncidentInvestigator.Application.Abstractions;
 using AzureIncidentInvestigator.Application.Diagnostics;
+using AzureIncidentInvestigator.Application.Errors;
 using AzureIncidentInvestigator.Domain.Diagnostics;
 using AzureIncidentInvestigator.Domain.Shared;
 using AzureIncidentInvestigator.Infrastructure.AzureMonitor.Dtos;
@@ -36,7 +37,7 @@ internal sealed class AppServiceDetectorService : IAppServiceDetectorService
 
         try
         {
-            using var resp = await _http.GetAsync(path, ct);
+            using var resp = await AzureAuthGuard.GuardAsync(() => _http.GetAsync(path, ct));
             if (resp.StatusCode == HttpStatusCode.NotFound)
             {
                 return DetectorResult.Unavailable(kind, "Detector not available on this site/tier.");
@@ -53,6 +54,12 @@ internal sealed class AppServiceDetectorService : IAppServiceDetectorService
         }
         catch (OperationCanceledException)
         {
+            throw;
+        }
+        catch (AuthenticationException)
+        {
+            // Auth failures are environment-level, not detector-specific — surface them to
+            // the caller instead of masking every detector as "Unavailable".
             throw;
         }
         catch (Exception ex)
