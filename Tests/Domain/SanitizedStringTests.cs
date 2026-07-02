@@ -1,8 +1,7 @@
 using FluentAssertions;
-using AzureIncidentInvestigator.Domain.Shared;
 using Xunit;
 
-namespace AzureIncidentInvestigator.Tests.Domain;
+namespace AzureIncidentInvestigator;
 
 public class SanitizedStringTests
 {

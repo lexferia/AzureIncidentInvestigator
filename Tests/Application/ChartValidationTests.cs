@@ -1,13 +1,8 @@
 using FluentAssertions;
 using Microsoft.Extensions.Options;
-using AzureIncidentInvestigator.Application.Charts;
-using AzureIncidentInvestigator.Application.Options;
-using AzureIncidentInvestigator.Application.Validation;
-using AzureIncidentInvestigator.Domain.Charts;
-using AzureIncidentInvestigator.Domain.Metrics;
 using Xunit;
 
-namespace AzureIncidentInvestigator.Tests.Application;
+namespace AzureIncidentInvestigator;
 
 public class ChartValidationTests
 {

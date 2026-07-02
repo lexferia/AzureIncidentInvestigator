@@ -1,8 +1,7 @@
 using FluentAssertions;
-using AzureIncidentInvestigator.Application.Queries;
 using Xunit;
 
-namespace AzureIncidentInvestigator.Tests.Application;
+namespace AzureIncidentInvestigator;
 
 public class TelemetryColumnExpressionTests
 {

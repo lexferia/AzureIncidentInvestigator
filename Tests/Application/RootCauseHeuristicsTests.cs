@@ -1,12 +1,7 @@
 using FluentAssertions;
-using AzureIncidentInvestigator.Application.Incidents;
-using AzureIncidentInvestigator.Domain.Diagnostics;
-using AzureIncidentInvestigator.Domain.Incidents;
-using AzureIncidentInvestigator.Domain.Metrics;
-using AzureIncidentInvestigator.Domain.Shared;
 using Xunit;
 
-namespace AzureIncidentInvestigator.Tests.Application;
+namespace AzureIncidentInvestigator;
 
 public class RootCauseHeuristicsTests
 {

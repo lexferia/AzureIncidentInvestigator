@@ -1,9 +1,7 @@
 using FluentAssertions;
-using AzureIncidentInvestigator.Application.Crawlers;
-using AzureIncidentInvestigator.Domain.Crawlers;
 using Xunit;
 
-namespace AzureIncidentInvestigator.Tests.Application;
+namespace AzureIncidentInvestigator;
 
 public class CrawlerClassifierTests
 {

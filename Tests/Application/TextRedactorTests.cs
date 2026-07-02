@@ -1,8 +1,7 @@
 using FluentAssertions;
-using AzureIncidentInvestigator.Application.Redaction;
 using Xunit;
 
-namespace AzureIncidentInvestigator.Tests.Application;
+namespace AzureIncidentInvestigator;
 
 public class TextRedactorTests
 {
