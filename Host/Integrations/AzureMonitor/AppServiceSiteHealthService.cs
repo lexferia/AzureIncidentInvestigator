@@ -8,22 +8,41 @@ namespace AzureIncidentInvestigator;
 public sealed class AppServiceSiteHealthService
 {
     private readonly LogsQueryClient _client;
+    private readonly AppServiceDetectorService _detectors;
     private readonly IOptionsMonitor<AppInsightsOptions> _options;
     private readonly ITextRedactor _redactor;
 
-    public AppServiceSiteHealthService(LogsQueryClient client, IOptionsMonitor<AppInsightsOptions> options, ITextRedactor redactor)
+    public AppServiceSiteHealthService(
+        LogsQueryClient client,
+        AppServiceDetectorService detectors,
+        IOptionsMonitor<AppInsightsOptions> options,
+        ITextRedactor redactor)
     {
         _client = client;
+        _detectors = detectors;
         _options = options;
         _redactor = redactor;
     }
 
-    public async Task<AppServiceSiteHealth> AnalyzeAsync(string allowedSiteResourceId, TimeWindow window, CancellationToken ct)
+    /// <param name="snatDetector">
+    /// Optional pre-fetched SNAT Port Exhaustion detector result. When null, this method queries
+    /// it. Callers that already fetched it (e.g. analyze_incident) pass it to avoid a duplicate call.
+    /// </param>
+    public async Task<AppServiceSiteHealth> AnalyzeAsync(
+        string allowedSiteResourceId,
+        TimeWindow window,
+        CancellationToken ct,
+        DetectorResult? snatDetector = null)
     {
         var restartsTask = GetRestartsAsync(allowedSiteResourceId, window, ct);
-        var snatTask = GetSnatExhaustionSignalsAsync(window, ct);
-        await Task.WhenAll(restartsTask, snatTask);
-        return new AppServiceSiteHealth(allowedSiteResourceId, await restartsTask, await snatTask);
+        var depsTask = GetOutboundDependencyFailuresAsync(window, ct);
+
+        // SNAT verdict comes from the authoritative platform detector, never from dependency failures.
+        snatDetector ??= await _detectors.QueryAsync(allowedSiteResourceId, DetectorKind.SnatPortExhaustion, window, ct);
+        var snat = SnatEvaluator.Evaluate(snatDetector);
+
+        await Task.WhenAll(restartsTask, depsTask);
+        return new AppServiceSiteHealth(allowedSiteResourceId, await restartsTask, snat, await depsTask);
     }
 
     public async Task<IReadOnlyList<RestartEvent>> GetRestartsAsync(string allowedSiteResourceId, TimeWindow window, CancellationToken ct)
@@ -47,24 +66,28 @@ public sealed class AppServiceSiteHealthService
             _redactor.Wrap(row[2]?.ToString() ?? ""))).ToList();
     }
 
-    public async Task<SnatExhaustionFinding> GetSnatExhaustionSignalsAsync(TimeWindow window, CancellationToken ct)
+    /// <summary>
+    /// Failed outbound dependency calls grouped by target (App Insights). Application-level signal,
+    /// NOT a SNAT verdict — kept separate so it can never be mistaken for SNAT port exhaustion.
+    /// </summary>
+    public async Task<OutboundDependencyFailures> GetOutboundDependencyFailuresAsync(TimeWindow window, CancellationToken ct)
     {
         var workspaceId = _options.CurrentValue.WorkspaceId;
         if (string.IsNullOrWhiteSpace(workspaceId))
         {
-            return new SnatExhaustionFinding(false, 0, Array.Empty<SnatTargetFailure>(), null);
+            return new OutboundDependencyFailures(0, Array.Empty<OutboundDependencyTarget>(), null);
         }
 
         Response<LogsQueryResult> response = await AzureAuthGuard.GuardAsync(() => _client.QueryWorkspaceAsync(
             workspaceId,
-            KqlTemplate.SnatSuspectFailures,
+            KqlTemplate.OutboundDependencyFailures,
             new QueryTimeRange(window.StartUtc, window.EndUtc),
             cancellationToken: ct));
 
         var rows = response.Value.Table.Rows;
         if (rows.Count == 0)
         {
-            return new SnatExhaustionFinding(false, 0, Array.Empty<SnatTargetFailure>(), null);
+            return new OutboundDependencyFailures(0, Array.Empty<OutboundDependencyTarget>(), null);
         }
 
         long total = 0;
@@ -98,14 +121,14 @@ public sealed class AppServiceSiteHealthService
         }
 
         var perTarget = byTarget
-            .Select(kvp => new SnatTargetFailure(
+            .Select(kvp => new OutboundDependencyTarget(
                 _redactor.Wrap(kvp.Key),
                 kvp.Value.Failures,
                 kvp.Value.PeakMinute))
             .OrderByDescending(t => t.Failures)
             .ToList();
 
-        return new SnatExhaustionFinding(true, total, perTarget, peak);
+        return new OutboundDependencyFailures(total, perTarget, peak);
     }
 
     private static DateTimeOffset AsDateTimeOffset(object? cell) => cell switch

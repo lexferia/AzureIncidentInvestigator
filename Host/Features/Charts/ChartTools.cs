@@ -16,7 +16,7 @@ public static class ChartTools
         ToolInputValidator validator,
         ToolRateLimiter limiter,
         ILogger<ToolMarker> log,
-        [Description("1-4 series specs to overlay. Each series has Label, Metric (AppServicePlanCpu|AppServicePlanMemory|AppServicePlanHttpQueue|DatabaseCpu|DatabaseDtu|DatabaseMemory|DatabaseConnections|RequestsPerMinute|FailedRequestsPerMinute|ExceptionsPerMinute|SnatSuspectedFailuresPerMinute), and (for Plan/DB metrics only) either AppServicePlanResourceId (allowlisted) or DatabaseKey (allowlisted), plus Aggregation (Average|Maximum). App Insights time-series metrics don't require a per-series target.")] ChartSeriesSpec[] series,
+        [Description("1-4 series specs to overlay. Each series has Label, Metric (AppServicePlanCpu|AppServicePlanMemory|AppServicePlanHttpQueue|DatabaseCpu|DatabaseDtu|DatabaseMemory|DatabaseConnections|RequestsPerMinute|FailedRequestsPerMinute|ExceptionsPerMinute|OutboundDependencyFailuresPerMinute), and (for Plan/DB metrics only) either AppServicePlanResourceId (allowlisted) or DatabaseKey (allowlisted), plus Aggregation (Average|Maximum). App Insights time-series metrics don't require a per-series target.")] ChartSeriesSpec[] series,
         [Description("Optional chart title (<=256 chars; redacted before rendering).")] string? title = null,
         [Description("ISO-8601 UTC start. Optional; defaults to 24h before end.")] DateTimeOffset? startTimeUtc = null,
         [Description("ISO-8601 UTC end. Optional; defaults to now.")] DateTimeOffset? endTimeUtc = null,

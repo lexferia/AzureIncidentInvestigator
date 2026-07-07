@@ -76,7 +76,9 @@ internal static class KqlTemplate
         | order by TimeGenerated asc
         """;
 
-    public const string SnatSuspectFailures = """
+    // Failed outbound dependency calls per minute by target. An application-level signal
+    // (backend slow/erroring, client-side timeouts) — NOT a SNAT port-exhaustion signal.
+    public const string OutboundDependencyFailures = """
         AppDependencies
         | where Success == false
         | where DependencyType in ("Http", "HTTP", "Https")
@@ -117,7 +119,7 @@ internal static class KqlTemplate
         | order by TimeGenerated asc
         """;
 
-    private const string SnatSuspectFailuresPerBinRaw = """
+    private const string OutboundDependencyFailuresPerBinRaw = """
         AppDependencies
         | where Success == false
         | where DependencyType in ("Http", "HTTP", "Https")
@@ -146,7 +148,7 @@ internal static class KqlTemplate
     public static string RequestsPerBin(int grainMinutes) => BindGrain(RequestsPerBinRaw, grainMinutes);
     public static string FailedRequestsPerBin(int grainMinutes) => BindGrain(FailedRequestsPerBinRaw, grainMinutes);
     public static string ExceptionsPerBin(int grainMinutes) => BindGrain(ExceptionsPerBinRaw, grainMinutes);
-    public static string SnatSuspectFailuresPerBin(int grainMinutes) => BindGrain(SnatSuspectFailuresPerBinRaw, grainMinutes);
+    public static string OutboundDependencyFailuresPerBin(int grainMinutes) => BindGrain(OutboundDependencyFailuresPerBinRaw, grainMinutes);
 
     private static string BindTop(string template, int top)
     {

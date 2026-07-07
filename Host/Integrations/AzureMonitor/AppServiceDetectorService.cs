@@ -83,11 +83,10 @@ public sealed class AppServiceDetectorService
             return DetectorResult.Unavailable(kind, "Empty response.");
         }
 
-        var status = MapStatus(dto.Properties.Status?.StatusId);
-        var statusMsg = _redactor.Wrap(dto.Properties.Status?.Message ?? "");
+        var datasets = dto.Properties.Dataset ?? Enumerable.Empty<DetectorDatasetDto>();
 
         var insights = new List<DetectorInsight>();
-        foreach (var ds in dto.Properties.Dataset ?? Enumerable.Empty<DetectorDatasetDto>())
+        foreach (var ds in datasets)
         {
             if (insights.Count >= MaxInsightsPerDetector)
             {
@@ -105,7 +104,64 @@ public sealed class AppServiceDetectorService
                 ds.Table?.Rows?.Count ?? 0));
         }
 
-        return new DetectorResult(kind, status, statusMsg, insights);
+        // Portal fidelity: App Service colors the detector tile from the worst status across
+        // its Insights rows, not only the top-level status (which is often Info/None). Take the
+        // most severe of the top-level status and any per-insight "Status" cells.
+        var topStatus = MapStatus(dto.Properties.Status?.StatusId);
+        var effectiveStatus = (dto.Properties.Dataset ?? new List<DetectorDatasetDto>())
+            .SelectMany(InsightStatuses)
+            .Append(topStatus)
+            .Where(s => s != DetectorStatus.Unavailable)
+            .DefaultIfEmpty(topStatus)
+            .Max();
+
+        var statusMsg = _redactor.Wrap(dto.Properties.Status?.Message ?? "");
+        return new DetectorResult(kind, effectiveStatus, statusMsg, insights);
+    }
+
+    // Reads per-row severities from an "Insights"-style dataset (a table with a "Status" column).
+    private static IEnumerable<DetectorStatus> InsightStatuses(DetectorDatasetDto ds)
+    {
+        var columns = ds.Table?.Columns;
+        var rows = ds.Table?.Rows;
+        if (columns is null || rows is null)
+        {
+            yield break;
+        }
+        var statusIdx = columns.FindIndex(c => string.Equals(c.ColumnName, "Status", StringComparison.OrdinalIgnoreCase));
+        if (statusIdx < 0)
+        {
+            yield break;
+        }
+        foreach (var row in rows)
+        {
+            if (statusIdx < row.Count && ParseInsightStatus(row[statusIdx]) is { } parsed)
+            {
+                yield return parsed;
+            }
+        }
+    }
+
+    private static DetectorStatus? ParseInsightStatus(object? cell)
+    {
+        var s = cell?.ToString();
+        if (string.IsNullOrWhiteSpace(s))
+        {
+            return null;
+        }
+        // App Service insight status is either the numeric enum (0=Critical..3=Success) or its name.
+        if (int.TryParse(s, out var n))
+        {
+            return MapStatus(n);
+        }
+        return s.Trim().ToLowerInvariant() switch
+        {
+            "critical" or "error" => DetectorStatus.Critical,
+            "warning" => DetectorStatus.Warning,
+            "info" => DetectorStatus.Info,
+            "success" or "healthy" or "none" => DetectorStatus.Healthy,
+            _ => null
+        };
     }
 
     private static DetectorStatus MapStatus(int? statusId) => statusId switch

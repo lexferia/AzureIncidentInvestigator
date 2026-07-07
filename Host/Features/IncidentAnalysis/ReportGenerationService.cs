@@ -85,13 +85,14 @@ public sealed class ReportGenerationService
         IReadOnlyList<DetectorResult> detectorResults = Array.Empty<DetectorResult>();
         if (_siteOpts.CurrentValue.MonitorMappings.TryGetValue(monitorKey, out var siteId))
         {
-            var siteTask = _siteHealth.AnalyzeAsync(siteId, window, ct);
+            // Fetch detectors first, then reuse the SNAT Port Exhaustion result for the site's
+            // SNAT verdict — avoids querying that detector twice.
             var detectorTasks = DefaultIncidentDetectors
                 .Select(k => _detectors.QueryAsync(siteId, k, window, ct))
                 .ToArray();
-            await Task.WhenAll(detectorTasks.Concat<Task>(new[] { siteTask }));
-            site = await siteTask;
-            detectorResults = detectorTasks.Select(t => t.Result).ToList();
+            detectorResults = await Task.WhenAll(detectorTasks);
+            var snatDetector = detectorResults.FirstOrDefault(d => d.Kind == DetectorKind.SnatPortExhaustion);
+            site = await _siteHealth.AnalyzeAsync(siteId, window, ct, snatDetector);
         }
 
         var dbs = new List<DatabaseHealth>();
@@ -204,8 +205,19 @@ public sealed class ReportGenerationService
                 sb.AppendLine($"  - {r.AtUtc:u}: {r.OperationName} — «untrusted» {r.Description} «/untrusted»");
             }
             var snat = a.AppServiceSiteHealth.Snat;
-            sb.AppendLine($"- SNAT-suspected failures: {snat.TotalSuspectFailures}{(snat.Suspected ? " (heuristic — not a definitive Azure counter)" : "")}");
-            foreach (var t in snat.ByTarget.Take(5))
+            sb.AppendLine($"- SNAT port exhaustion (platform detector): **{snat.Verdict}**");
+            if (!string.IsNullOrWhiteSpace(snat.Message))
+            {
+                sb.AppendLine($"  - {snat.Message}");
+            }
+            foreach (var e in snat.Evidence.Take(3))
+            {
+                sb.AppendLine($"  - «untrusted» {e} «/untrusted»");
+            }
+
+            var deps = a.AppServiceSiteHealth.OutboundDependencyFailures;
+            sb.AppendLine($"- Outbound dependency failures (App Insights — application-level, not SNAT): {deps.TotalFailures}");
+            foreach (var t in deps.ByTarget.Take(5))
             {
                 sb.AppendLine($"  - «untrusted» {t.Target} «/untrusted»: {t.Failures} failures, peak {t.PeakMinuteUtc:u}");
             }

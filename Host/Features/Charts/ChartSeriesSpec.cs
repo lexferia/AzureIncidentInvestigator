@@ -12,7 +12,7 @@ public sealed class ChartSeriesSpec
     [Description("Series label shown in the legend (1-64 chars, redacted).")]
     public string Label { get; set; } = "";
 
-    [Description("Metric to plot. Plan/DB metrics: AppServicePlanCpu, AppServicePlanMemory, AppServicePlanHttpQueue, DatabaseCpu, DatabaseDtu, DatabaseMemory, DatabaseConnections. App Insights time-series (workspace-wide, no per-series target): RequestsPerMinute, FailedRequestsPerMinute, ExceptionsPerMinute, SnatSuspectedFailuresPerMinute.")]
+    [Description("Metric to plot. Plan/DB metrics: AppServicePlanCpu, AppServicePlanMemory, AppServicePlanHttpQueue, DatabaseCpu, DatabaseDtu, DatabaseMemory, DatabaseConnections. App Insights time-series (workspace-wide, no per-series target): RequestsPerMinute, FailedRequestsPerMinute, ExceptionsPerMinute, OutboundDependencyFailuresPerMinute.")]
     public string Metric { get; set; } = "";
 
     [Description("Required for AppServicePlan* metrics only. Must be in AppServicePlans:AllowedResourceIds.")]

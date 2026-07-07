@@ -49,6 +49,6 @@ public class KqlTemplateTests
     {
         KqlTemplate.StatusCodeBreakdown.Should().NotBeNullOrWhiteSpace();
         KqlTemplate.AppServiceRestarts.Should().NotBeNullOrWhiteSpace();
-        KqlTemplate.SnatSuspectFailures.Should().NotBeNullOrWhiteSpace();
+        KqlTemplate.OutboundDependencyFailures.Should().NotBeNullOrWhiteSpace();
     }
 }

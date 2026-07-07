@@ -27,7 +27,13 @@ internal sealed class DetectorDatasetDto
 
 internal sealed class DetectorTableDto
 {
+    [JsonPropertyName("columns")] public List<DetectorColumnDto>? Columns { get; set; }
     [JsonPropertyName("rows")] public List<List<object?>>? Rows { get; set; }
+}
+
+internal sealed class DetectorColumnDto
+{
+    [JsonPropertyName("columnName")] public string? ColumnName { get; set; }
 }
 
 internal sealed class DetectorRenderingDto

@@ -133,7 +133,7 @@ public sealed class AppInsightsQueryService
             AppInsightsSeriesKind.Requests => KqlTemplate.RequestsPerBin(grain),
             AppInsightsSeriesKind.FailedRequests => KqlTemplate.FailedRequestsPerBin(grain),
             AppInsightsSeriesKind.Exceptions => KqlTemplate.ExceptionsPerBin(grain),
-            AppInsightsSeriesKind.SnatSuspectedFailures => KqlTemplate.SnatSuspectFailuresPerBin(grain),
+            AppInsightsSeriesKind.OutboundDependencyFailures => KqlTemplate.OutboundDependencyFailuresPerBin(grain),
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown series kind.")
         };
 

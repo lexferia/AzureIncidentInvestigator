@@ -17,7 +17,9 @@ public enum ChartMetric
     RequestsPerMinute = 7,
     FailedRequestsPerMinute = 8,
     ExceptionsPerMinute = 9,
-    SnatSuspectedFailuresPerMinute = 10
+    // Failed outbound dependency calls/min (App Insights). NOT a SNAT signal — SNAT port
+    // usage is not an Azure Monitor metric; the SNAT verdict comes from the platform detector.
+    OutboundDependencyFailuresPerMinute = 10
 }
 
 public enum ChartValueType

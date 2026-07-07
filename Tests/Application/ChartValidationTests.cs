@@ -151,7 +151,7 @@ public class ChartValidationTests
     [InlineData("RequestsPerMinute")]
     [InlineData("FailedRequestsPerMinute")]
     [InlineData("ExceptionsPerMinute")]
-    [InlineData("SnatSuspectedFailuresPerMinute")]
+    [InlineData("OutboundDependencyFailuresPerMinute")]
     public void ValidateChartSeries_AppInsightsMetric_RequiresNoTarget(string metric)
     {
         var v = NewValidator();

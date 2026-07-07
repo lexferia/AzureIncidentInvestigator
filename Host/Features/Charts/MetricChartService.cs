@@ -87,7 +87,7 @@ public sealed class MetricChartService
             ChartMetric.RequestsPerMinute => await _ai.GetTimeSeriesAsync(AppInsightsSeriesKind.Requests, window, ct),
             ChartMetric.FailedRequestsPerMinute => await _ai.GetTimeSeriesAsync(AppInsightsSeriesKind.FailedRequests, window, ct),
             ChartMetric.ExceptionsPerMinute => await _ai.GetTimeSeriesAsync(AppInsightsSeriesKind.Exceptions, window, ct),
-            ChartMetric.SnatSuspectedFailuresPerMinute => await _ai.GetTimeSeriesAsync(AppInsightsSeriesKind.SnatSuspectedFailures, window, ct),
+            ChartMetric.OutboundDependencyFailuresPerMinute => await _ai.GetTimeSeriesAsync(AppInsightsSeriesKind.OutboundDependencyFailures, window, ct),
             _ => new MetricSeries(s.Metric.ToString(), "", Array.Empty<MetricPoint>())
         };
         return (s, raw);

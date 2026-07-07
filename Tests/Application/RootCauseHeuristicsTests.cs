@@ -8,6 +8,12 @@ public class RootCauseHeuristicsTests
     private static Incident MakeIncident(DateTimeOffset downStart) =>
         new("1:1", 1, "site", "https://site", downStart, downStart.AddMinutes(5), 300, "down");
 
+    private static SnatFinding Snat(SnatVerdict v) =>
+        new(v, SnatEvaluator.Source, null, Array.Empty<SanitizedString>());
+
+    private static OutboundDependencyFailures NoDeps() =>
+        new(0, Array.Empty<OutboundDependencyTarget>(), null);
+
     [Fact]
     public void Derive_AppRestartBeforeDowntime_AddsCause()
     {
@@ -16,7 +22,8 @@ public class RootCauseHeuristicsTests
         var site = new AppServiceSiteHealth(
             "/r",
             new[] { new RestartEvent(down.AddSeconds(-51), "Application stopped", new SanitizedString("recycle")) },
-            new SnatExhaustionFinding(false, 0, Array.Empty<SnatTargetFailure>(), null));
+            Snat(SnatVerdict.NotExhausted),
+            NoDeps());
         var causes = RootCauseHeuristics.Derive(inc, plan: null, site: site, dbs: Array.Empty<DatabaseHealth>());
         causes.Should().Contain(c => c.Contains("restarted", StringComparison.OrdinalIgnoreCase));
     }
@@ -38,17 +45,40 @@ public class RootCauseHeuristicsTests
     }
 
     [Fact]
-    public void Derive_SnatSuspected_AddsCause()
+    public void Derive_SnatExhaustedByDetector_AddsSnatCause()
     {
         var inc = MakeIncident(DateTimeOffset.UtcNow);
         var site = new AppServiceSiteHealth(
             "/r",
             Array.Empty<RestartEvent>(),
-            new SnatExhaustionFinding(true, 142,
-                new[] { new SnatTargetFailure(new SanitizedString("api.partner.com"), 142, DateTimeOffset.UtcNow) },
+            new SnatFinding(SnatVerdict.Exhausted, SnatEvaluator.Source, null,
+                new[] { new SanitizedString("SNAT ports exhausted on instance RD0003FF8") }),
+            NoDeps());
+        var causes = RootCauseHeuristics.Derive(inc, plan: null, site, dbs: Array.Empty<DatabaseHealth>());
+        causes.Should().Contain(c => c.Contains("SNAT port exhaustion", StringComparison.OrdinalIgnoreCase));
+    }
+
+    // Regression for 2026-06-22 prdmeduapp: the SNAT detector reported healthy (ports used well
+    // below allocated, all SNAT connections successful), while outbound dependency failures to a
+    // single host were high (210 to meduapi.mims.com). SNAT must NOT be blamed.
+    [Fact]
+    public void Derive_SnatHealthy_ButHighDependencyFailures_NoSnatCause()
+    {
+        var inc = MakeIncident(DateTimeOffset.UtcNow);
+        var site = new AppServiceSiteHealth(
+            "/r",
+            Array.Empty<RestartEvent>(),
+            Snat(SnatVerdict.NotExhausted),
+            new OutboundDependencyFailures(210,
+                new[] { new OutboundDependencyTarget(new SanitizedString("meduapi.mims.com"), 210, DateTimeOffset.UtcNow) },
                 DateTimeOffset.UtcNow));
         var causes = RootCauseHeuristics.Derive(inc, plan: null, site, dbs: Array.Empty<DatabaseHealth>());
-        causes.Should().Contain(c => c.Contains("SNAT", StringComparison.OrdinalIgnoreCase));
+
+        // No cause may blame SNAT exhaustion...
+        causes.Should().NotContain(c => c.Contains("SNAT port exhaustion", StringComparison.OrdinalIgnoreCase));
+        // ...and the dependency failures are reported honestly as application-level, not SNAT.
+        causes.Should().Contain(c => c.Contains("outbound dependency failures", StringComparison.OrdinalIgnoreCase)
+                                     && c.Contains("not SNAT", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

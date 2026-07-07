@@ -84,7 +84,7 @@ flowchart TD
     P1 --> LAW1[(Log Analytics<br/>exceptions / dependencies)]
     P2 --> LAW2[(Log Analytics<br/>bursty-crawler activity<br/>10min bins per IP+UA+Country)]
     P3 --> AM1[(Azure Monitor Metrics<br/>serverfarms)]
-    P4 --> LAW3[(Log Analytics<br/>AppServicePlatformLogs +<br/>SNAT heuristic)]
+    P4 --> LAW3[(Log Analytics<br/>AppServicePlatformLogs +<br/>outbound dependency failures)]
     P5 --> AM2[(Azure Monitor Metrics<br/>databases)]
     P6 --> DET[(App Service Diagnostics<br/>SnatPortExhaustion,<br/>WebAppRestarted, HighCpu,<br/>MemoryAnalysis,<br/>ApplicationCrashes)]
 
@@ -299,10 +299,11 @@ Then point the Claude config `command` at `publish\AzureIncidentInvestigator.Hos
 **Example prompt:** *"Was the app service plan saturated during the outage?"*
 
 ### 8. `analyze_app_service_site_health`
-**Purpose:** Detect app restarts and SNAT-suspected outbound failures for an allowlisted site.
+**Purpose:** For an allowlisted site: app restarts, an authoritative SNAT port-exhaustion verdict, and — separately — failed outbound dependency calls.
 **Input:** `{ "appServiceSiteResourceId": "/subscriptions/.../sites/<site>", "startTimeUtc": "...", "endTimeUtc": "..." }`
-**Note on SNAT:** detection is heuristic (outbound dependency failure patterns). Findings are labeled `"suspected"`, not confirmed — definitive SNAT counters require platform diagnostic settings most teams don't enable.
-**Example prompt:** *"Did the app restart during the incident? Any SNAT issues?"*
+**Output (relevant fields):** `snat: { verdict, source, message?, evidence[] }` and `outboundDependencyFailures: { totalFailures, byTarget[], peakMinuteUtc }`.
+**Note on SNAT:** the verdict is **authoritative** — it comes from the Azure App Service "SNAT Port Exhaustion" detector (the exact source the portal's *Diagnose and solve problems* tile renders), so it reflects real TCP ports Allocated/Used and Successful/Failed SNAT connections. `verdict` is one of `Exhausted`, `Suspected`, `NotExhausted`, or `Unknown` (returned when the detector is unavailable, with a message saying so). SNAT port usage is *not* an Azure Monitor metric, so this is the only authoritative source. Failed outbound dependency calls are reported **separately** under `outboundDependencyFailures` — that is an application-level signal (slow/erroring backend, client timeouts) and is explicitly **not** treated as SNAT exhaustion.
+**Example prompt:** *"Did the app restart during the incident? Is there real SNAT port exhaustion?"*
 
 ### 9. `analyze_database_health`
 **Purpose:** CPU/DTU/memory/connections for an allowlisted database.
@@ -335,7 +336,7 @@ Then point the Claude config `command` at `publish\AzureIncidentInvestigator.Hos
     { "label": "Plan CPU avg", "metric": "AppServicePlanCpu",
       "appServicePlanResourceId": "/subs/.../serverfarms/prod-plan",
       "aggregation": "Average" },
-    { "label": "SNAT failures/min", "metric": "SnatSuspectedFailuresPerMinute",
+    { "label": "Outbound dep failures/min", "metric": "OutboundDependencyFailuresPerMinute",
       "aggregation": "Average" }
   ],
   "startTimeUtc": "...",
@@ -346,10 +347,10 @@ Then point the Claude config `command` at `publish\AzureIncidentInvestigator.Hos
 **Chartable metrics:**
 - **Plan** (require `appServicePlanResourceId` allowlisted): `AppServicePlanCpu`, `AppServicePlanMemory`, `AppServicePlanHttpQueue`.
 - **Database** (require `databaseKey` allowlisted): `DatabaseCpu`, `DatabaseDtu`, `DatabaseMemory`, `DatabaseConnections`.
-- **Application Insights time-series** (workspace-wide, no per-series target): `RequestsPerMinute`, `FailedRequestsPerMinute`, `ExceptionsPerMinute`, `SnatSuspectedFailuresPerMinute`.
+- **Application Insights time-series** (workspace-wide, no per-series target): `RequestsPerMinute`, `FailedRequestsPerMinute`, `ExceptionsPerMinute`, `OutboundDependencyFailuresPerMinute` (failed outbound dependency calls — an app-level signal, **not** a SNAT metric; SNAT port usage isn't available as an Azure Monitor metric).
 **Bounds:** 1–4 series per chart; labels ≤ 64 chars (redacted); window ≤ 7 days; 1000-point cap per series with auto-selected bin grain (1/5/15/60 min).
 **Output:** `CallToolResult` with two content blocks — `ImageContentBlock` (the PNG) + `TextContentBlock` (`{ seriesCount, pointCount, savedPath? }`). `saveToFile: true` also writes the PNG into the jailed `Reports:OutputDirectory`.
-**Example prompt:** *"Chart the App Service Plan CPU and SNAT-suspected failures together over the incident window."*
+**Example prompt:** *"Chart the App Service Plan CPU and outbound dependency failures together over the incident window."*
 
 ---
 
@@ -403,7 +404,7 @@ Each `TelemetryColumns:*` setting is an **ordered fallback list**. Each entry is
 
 **Validation:** keys are regex-checked at compile time. customDimensions keys may contain `A-Z a-z 0-9 _ - . space` (1–128 chars). Built-in column names must be standard identifiers (`[A-Za-z_][A-Za-z0-9_]*`, 1–64 chars). Anything else — quotes, brackets, semicolons, pipes — is rejected with a clear error before the query runs. This is operator-only config (not Claude-controllable), but the validation prevents bad config from producing broken or unsafe KQL.
 
-**Which queries use these:** `detect_bad_crawlers` (the 10-min × IP × country × UA burst query), the legacy `GetTopUserAgentsAsync`/`GetTopClientIpsAsync` helpers, and any future App Insights query that needs client identity. Pure event-shape queries (top exceptions, failed dependencies, SNAT detection) don't need this — they read schema-native columns directly.
+**Which queries use these:** `detect_bad_crawlers` (the 10-min × IP × country × UA burst query), the legacy `GetTopUserAgentsAsync`/`GetTopClientIpsAsync` helpers, and any future App Insights query that needs client identity. Pure event-shape queries (top exceptions, failed dependencies, outbound dependency failures) don't need this — they read schema-native columns directly.
 
 ---
 

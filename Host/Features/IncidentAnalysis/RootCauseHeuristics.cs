@@ -37,13 +37,22 @@ public static class RootCauseHeuristics
                 }
             }
 
-            if (site.Snat.Suspected && site.Snat.TotalSuspectFailures > 0)
+            // Authoritative SNAT verdict from the platform detector — never inferred from dependency failures.
+            if (site.Snat.Verdict is SnatVerdict.Exhausted or SnatVerdict.Suspected)
             {
-                var top = site.Snat.ByTarget.FirstOrDefault();
-                if (top is not null)
-                {
-                    causes.Add($"SNAT-suspected: {site.Snat.TotalSuspectFailures} outbound timeouts (peak target: {top.Target}, {top.Failures} failures) during window.");
-                }
+                var label = site.Snat.Verdict == SnatVerdict.Exhausted ? "SNAT port exhaustion CONFIRMED" : "SNAT port exhaustion SUSPECTED";
+                var detail = site.Snat.Evidence.Count > 0 ? site.Snat.Evidence[0].Value : "";
+                causes.Add($"{label} by the App Service SNAT Port Exhaustion detector{(string.IsNullOrWhiteSpace(detail) ? "" : $": {detail}")}.");
+            }
+
+            // Outbound dependency failures are an application-level signal, reported separately and
+            // explicitly NOT presented as SNAT exhaustion.
+            var deps = site.OutboundDependencyFailures;
+            if (deps.TotalFailures > 0)
+            {
+                var top = deps.ByTarget.FirstOrDefault();
+                var target = top is not null ? $" (top target: {top.Target}, {top.Failures} failures)" : "";
+                causes.Add($"{deps.TotalFailures} outbound dependency failures during window{target} — application-level (slow/erroring backend or client timeouts), not SNAT.");
             }
         }
 

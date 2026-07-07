@@ -9,5 +9,5 @@ public enum AppInsightsSeriesKind
     Requests = 0,
     FailedRequests = 1,
     Exceptions = 2,
-    SnatSuspectedFailures = 3
+    OutboundDependencyFailures = 3
 }

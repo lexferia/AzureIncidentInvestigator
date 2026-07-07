@@ -26,7 +26,7 @@ public static class AppServiceHealthTools
         });
 
     [McpServerTool(Name = "analyze_app_service_site_health")]
-    [Description("Analyze an App Service Site for restarts and SNAT-suspected outbound failures (heuristic) for an allowlisted site resource ID.")]
+    [Description("Analyze an App Service Site for an allowlisted site resource ID: restarts, an authoritative SNAT port-exhaustion verdict (from the Azure App Service SNAT Port Exhaustion detector — the same source as the portal), and — reported separately — failed outbound dependency calls (App Insights; NOT a SNAT signal).")]
     public static Task<object> AnalyzeSite(
         AppServiceSiteHealthService svc,
         ToolInputValidator validator,
