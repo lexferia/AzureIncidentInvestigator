@@ -28,23 +28,19 @@ public sealed class DatabaseHealthService
 
     public async Task<DatabaseHealth> AnalyzeAsync(AllowedDatabase allowed, TimeWindow window, CancellationToken ct)
     {
-        var metricNames = MetricsFor(allowed.Type);
         var grain = MetricsHelpers.PickGrain(window);
 
-        Response<MetricsQueryResult> response = await AzureAuthGuard.GuardAsync(() => _client.QueryResourceAsync(
-            allowed.ResourceId,
-            metricNames,
-            new MetricsQueryOptions
-            {
-                TimeRange = new QueryTimeRange(window.StartUtc, window.EndUtc),
-                Granularity = grain,
-                Aggregations = { MetricAggregationType.Average, MetricAggregationType.Maximum }
-            },
-            cancellationToken: ct));
+        // Query each metric independently rather than in one batch: a metric that doesn't
+        // exist for this database's purchasing model (e.g. dtu_consumption_percent on a
+        // vCore SQL DB) makes Azure Monitor reject the ENTIRE batched request with a 400.
+        // Per-metric queries let the unsupported one be skipped while the rest succeed.
+        var queried = await Task.WhenAll(
+            MetricsFor(allowed.Type).Select(name => TryQueryMetricAsync(allowed.ResourceId, name, grain, window, ct)));
+        var metrics = queried.Where(m => m is not null).Select(m => m!).ToList();
 
         MetricSummary? Summarize(string name, double threshold)
         {
-            var m = response.Value.Metrics.FirstOrDefault(x => x.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+            var m = metrics.FirstOrDefault(x => x.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
             if (m is null)
             {
                 return null;
@@ -84,21 +80,55 @@ public sealed class DatabaseHealthService
         var azureAgg = ToAzureAggregation(aggregation);
         var grain = MetricsHelpers.PickGrain(window);
 
-        Response<MetricsQueryResult> response = await AzureAuthGuard.GuardAsync(() => _client.QueryResourceAsync(
-            allowed.ResourceId,
-            new[] { azureName },
-            new MetricsQueryOptions
-            {
-                TimeRange = new QueryTimeRange(window.StartUtc, window.EndUtc),
-                Granularity = grain,
-                Aggregations = { azureAgg }
-            },
-            cancellationToken: ct));
+        MetricResult? metric;
+        try
+        {
+            Response<MetricsQueryResult> response = await AzureAuthGuard.GuardAsync(() => _client.QueryResourceAsync(
+                allowed.ResourceId,
+                new[] { azureName },
+                new MetricsQueryOptions
+                {
+                    TimeRange = new QueryTimeRange(window.StartUtc, window.EndUtc),
+                    Granularity = grain,
+                    Aggregations = { azureAgg }
+                },
+                cancellationToken: ct));
+            metric = response.Value.Metrics.FirstOrDefault(m => m.Name.Equals(azureName, StringComparison.OrdinalIgnoreCase));
+        }
+        catch (RequestFailedException ex) when (ex.Status == 400)
+        {
+            // Metric not supported for this resource/tier (e.g. DTU metrics on a vCore DB).
+            metric = null;
+        }
 
-        var metric = response.Value.Metrics.FirstOrDefault(m => m.Name.Equals(azureName, StringComparison.OrdinalIgnoreCase));
         return metric is null
             ? new MetricSeries(azureName, "", Array.Empty<MetricPoint>())
             : MetricsHelpers.ToSeries(metric, azureAgg);
+    }
+
+    // Queries a single metric, tolerating a 400 "metric not found" so an unsupported
+    // metric is skipped rather than failing the caller. Auth failures still propagate.
+    private async Task<MetricResult?> TryQueryMetricAsync(
+        string resourceId, string metricName, TimeSpan grain, TimeWindow window, CancellationToken ct)
+    {
+        try
+        {
+            Response<MetricsQueryResult> response = await AzureAuthGuard.GuardAsync(() => _client.QueryResourceAsync(
+                resourceId,
+                new[] { metricName },
+                new MetricsQueryOptions
+                {
+                    TimeRange = new QueryTimeRange(window.StartUtc, window.EndUtc),
+                    Granularity = grain,
+                    Aggregations = { MetricAggregationType.Average, MetricAggregationType.Maximum }
+                },
+                cancellationToken: ct));
+            return response.Value.Metrics.FirstOrDefault(m => m.Name.Equals(metricName, StringComparison.OrdinalIgnoreCase));
+        }
+        catch (RequestFailedException ex) when (ex.Status == 400)
+        {
+            return null;
+        }
     }
 
     private static string? AzureMetricName(DatabaseType type, DatabaseMetricSeriesKind kind) => (type, kind) switch
