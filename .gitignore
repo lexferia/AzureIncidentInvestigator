@@ -33,8 +33,8 @@ artifacts/
 !.env.example
 secrets.json
 
-# Generated reports
-reports/
+# Generated reports (root-anchored so it never shadows source folders like Application/Reports/)
+/reports/
 *.png
 
 # ---- OS noise ----

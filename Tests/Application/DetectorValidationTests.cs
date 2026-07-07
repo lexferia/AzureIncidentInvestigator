@@ -1,12 +1,8 @@
 using FluentAssertions;
 using Microsoft.Extensions.Options;
-using AzureIncidentInvestigator.Application.Diagnostics;
-using AzureIncidentInvestigator.Application.Options;
-using AzureIncidentInvestigator.Application.Validation;
-using AzureIncidentInvestigator.Domain.Diagnostics;
 using Xunit;
 
-namespace AzureIncidentInvestigator.Tests.Application;
+namespace AzureIncidentInvestigator;
 
 public class DetectorValidationTests
 {

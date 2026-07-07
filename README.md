@@ -33,9 +33,9 @@ flowchart LR
 
     subgraph "MCP Server (local process)"
         direction TB
-        H[Host<br/>InvestigationTools<br/>11 tools] --> V[ToolInputValidator<br/>regex / bounds / allowlists]
-        V --> A[Application Services<br/>incident, crawler, report,<br/>root-cause heuristics]
-        A --> I[Infrastructure Clients]
+        H[Feature tools<br/>Features/*/*Tools<br/>11 tools] --> V[ToolInputValidator<br/>regex / bounds / allowlists]
+        V --> A[Feature services<br/>incident, crawler, report,<br/>root-cause heuristics]
+        A --> I[Integrations Clients]
         A --> R[TextRedactor<br/>SanitizedString wrap]
         R --> H
         H --> CHRT[MetricChartRenderer<br/>ScottPlot, dark Azure theme]
@@ -467,10 +467,10 @@ Adding a new tool? Follow this checklist (also in `SECURITY.md`):
 1. Add bounded primitive parameters to the tool method (no raw strings that flow into queries).
 2. Validate input via `ToolInputValidator` (extend it if needed).
 3. If the tool accepts a resource identifier, add an allowlist in config and a validator check.
-4. Add the service abstraction in `Application/Abstractions`.
-5. Implement it in `Infrastructure` using `MetricsQueryClient`/`LogsQueryClient` with a parameterized KQL template — never accept raw KQL.
+4. Add (or extend) a service under `Features/<Slice>/` or an external client under `Integrations/`.
+5. For Azure queries use `MetricsQueryClient`/`LogsQueryClient` with a parameterized KQL template — never accept raw KQL — and wrap the call in `AzureAuthGuard.GuardAsync(...)`.
 6. Wrap returned external strings in `ITextRedactor.Wrap(...)`.
-7. Add the tool method to `InvestigationTools.cs` using the `RunAsync` wrapper (logging, rate-limiting, error translation).
+7. Add the tool method to a `[McpServerToolType]` class in the feature folder, calling `ToolExecution.RunAsync(...)` (logging, rate-limiting, error translation). Register any new service in the DI extension.
 8. Unit-test the validator and any pure logic.
 9. Update this README and `SECURITY.md`.
 
@@ -480,18 +480,30 @@ Never add: `run_kql`, `fetch_url`, `execute_command`, `read_file`, `get_config`.
 
 ## Project layout
 
+The server is a **single project** organized by vertical slice (feature), not by
+technical layer. Types share one flat `AzureIncidentInvestigator` namespace; the
+folders carry the organization.
+
 ```
 AzureIncidentInvestigator.slnx
 Directory.Build.props          # shared build settings
 Directory.Packages.props       # central package versions
 nuget.config                   # single public nuget.org feed
-Domain/                        # pure records / value types (no deps)
-Application/                   # service interfaces, validation, redaction, classifier, KQL templates
-Infrastructure/                # UptimeRobot + Azure Monitor clients, DI wiring
-Host/                          # Program.cs, MCP tools, Serilog, rate limiter, appsettings
-Tests/                         # xUnit + FluentAssertions (Application + Domain)
+Host/                          # the MCP server (one project)
+  Common/                      #   options, errors, validation, redaction, primitives
+  Contracts/                   #   shared domain records (incidents, metrics, crawlers, …)
+  Integrations/                #   UptimeRobot + Azure Monitor clients, KQL, DI wiring
+  Features/                    #   one folder per capability — each owns its MCP tool(s):
+                               #     Incidents, IncidentAnalysis, Telemetry, Crawlers,
+                               #     Health, Diagnostics, Charts
+  Mcp/                         #   Program.cs, ToolExecution envelope, Serilog, rate limiter
+  appsettings.json             #   single config file (loaded from the binary directory)
+Tests/                         # xUnit + FluentAssertions (pure logic: validators, KQL, heuristics)
 docs/superpowers/              # design spec + implementation plan
 ```
+
+> The project directory is still named `Host/` so existing MCP client launch paths
+> (`dotnet run --project …/Host`) keep working.
 
 ---
 
